@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Inventario - Login</title>
+  <link href="lib/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="/css/styles.css">
+  <link rel="icon" type="image/svg+xml" href="./lib/header-logo.svg">
+  
+
+  <style>
+    :root {
+      --bs-body-bg: #0a0f1e;
+      --bs-body-color: #e5e7eb;
+    }
+
+    body {
+      min-height: 100vh;
+      background: radial-gradient(1000px 600px at 20% -10%, #0b1a2a 0, #0a0f1e 50%, #0a0f1e 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--bs-body-color);
+    }
+
+    .card {
+      background-color: rgba(33, 37, 41, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 0 25px rgba(0, 0, 0, 0.6);
+    }
+
+    .form-control {
+      background-color: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: #e5e7eb;
+    }
+
+    .form-control:focus {
+      border-color: #00bcd4;
+      box-shadow: 0 0 0 0.15rem rgba(0, 188, 212, 0.25);
+      background-color: rgba(255, 255, 255, 0.15);
+      color: #fff;
+    }
+
+    .btn-info {
+      background-color: #00bcd4;
+      border: none;
+      font-weight: 600;
+    }
+
+    .btn-info:hover {
+      background-color: #02a3b9;
+    }
+
+    .text-secondary {
+      color: #9aa0ac !important;
+    }
+
+    .is-invalid {
+      border-color: #dc3545 !important;
+    }
+
+    .invalid-msg {
+      font-size: 0.8rem;
+      color: #dc3545;
+    }
+
+    .btn-busy {
+      position: relative;
+      opacity: 0.7;
+      pointer-events: none;
+    }
+
+    .btn-busy .spinner-border {
+      display: inline-block !important;
+    }
+
+    .spinner-border {
+      display: none;
+    }
+</style>
+
+</head>
+
+<body>
+
+  <div class="container" style="max-width:420px;">
+
+    <div class="text-center mb-3">
+      <div class="h3 text-info fw-bold">Inventario RES</div>
+      <div class="h5 text-info fw-bold">(Activos IT)</div>
+      <div class="text-secondary">Acceso</div>
+    </div>
+
+    <div class="card shadow-lg">
+      <div class="card-body p-4">
+        <form id="loginForm" class="vstack gap-3">
+          <div>
+            <label class="form-label">Email</label>
+            <input class="form-control" name="email" type="email" placeholder="admin@demo.local" required>
+          </div>
+          <div>
+            <label class="form-label">Contraseña</label>
+            <input class="form-control" name="password" type="password" placeholder="••••••••" required>
+          </div>
+
+          <button id="btnLogin" class="btn btn-info w-100" type="submit">
+            <span class="spinner-border spinner-border-sm me-2" id="spinLogin" role="status" aria-hidden="true"></span>
+            Ingresar
+          </button>
+          <div id="loginError" class="alert alert-danger py-2 px-3 d-none mt-2" role="alert"></div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container (notificaciones en esquina) -->
+  <div class="position-fixed top-0 end-0 p-3" style="z-index: 1080">
+    <div id="appToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive" aria-atomic="true">
+      <div class="d-flex">
+        <div class="toast-body" id="toastMsg">...</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+      </div>
+    </div>
+  </div>
+
+  <script src="lib/bootstrap.bundle.min.js"></script>
+  <script type="module" src="./js/api.js"></script>
+  <script type="module" src="./js/auth.js"></script>
+
+</body>
+
+</html>

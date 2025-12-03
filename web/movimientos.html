@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Movimientos - Inventario</title>
+
+    <!-- Bootstrap y estilos globales -->
+    <link rel="stylesheet" href="./lib/bootstrap.min.css">
+    <link rel="stylesheet" href="./css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="./lib/header-logo.svg">
+
+    <style>
+        body {
+            background-color: #0a0f1e;
+            color: #fff;
+        }
+
+        .card {
+            border: 1px solid rgba(255, 255, 255, .08);
+            background-color: #1a1f2e;
+        }
+
+        .table-responsive {
+            border: 1px solid rgba(255, 255, 255, .08);
+        }
+
+        .table thead {
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+
+        .text-secondary {
+            color: rgba(255, 255, 255, .6) !important;
+        }
+
+        .form-select {
+            background-color: #1a1f2e;
+            color: #fff !important;
+            border-color: rgba(255, 255, 255, .25) !important;
+        }
+
+        .form-select:focus {
+            background-color: #1a1f2e !important;
+            color: #fff;
+            border-color: #0dcaf0 !important;
+            box-shadow: 0 0 0 .25rem rgba(13, 202, 240, .25) !important;
+        }
+
+        .form-select option {
+            background-color: #1a1f2e;
+            color: #fff;
+        }
+    </style>
+</head>
+
+<body class="bg-dark text-light">
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container">
+            <a class="navbar-brand text-info" href="/">Inventario</a>
+            <ul class="navbar-nav ms-3">
+                <li class="nav-item"><a class="nav-link" href="/activos.html">Activos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/movimientos.html">Movimientos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/perifericos.html">Periféricos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/usuarios.html">Usuarios</a></li>
+                <li class="nav-item"><a class="nav-link" href="/reportes.html">Reportes</a></li>
+                <li class="nav-item"><a class="nav-link" href="/acta_entrega.html">Acta de entrega</a></li>
+            </ul>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <small id="userInfo" class="text-secondary"></small>
+                <button id="btnLogout" class="btn btn-outline-light btn-sm">Salir</button>
+            </div>
+        </div>
+    </nav>
+
+
+    <main class="container py-4">
+
+        <h1 class="h4 mb-3">Movimientos de activos</h1>
+        <p class="text-secondary mb-4">
+            Registra salidas (asignar a persona) y entradas (devolver a bodega). Puedes revisar historial global o
+            historial de un activo específico.
+        </p>
+
+        <!-- FORMULARIO PRINCIPAL -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <form id="formMovimiento" class="row g-3">
+
+                    <!-- BUSCAR ACTIVO -->
+                    <div class="col-12">
+                        <label class="form-label">Buscar activo</label>
+                        <div class="row g-2 align-items-start">
+                            <div class="col-md-6">
+                                <input class="form-control" id="txtBuscarActivo"
+                                    placeholder="IMEI / Serie / Hostname / Modelo / Marca" />
+                            </div>
+                            <div class="col-auto">
+                                <button class="btn btn-outline-info" type="button" id="btnBuscarActivo">
+                                    Buscar
+                                </button>
+                            </div>
+                            <div class="col-12 small text-secondary">
+                                Selecciona un activo de la lista de resultados para asociarlo al movimiento.
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- RESULTADOS DE BÚSQUEDA -->
+                    <div class="col-12">
+                        <div class="table-responsive rounded" style="max-height:180px; overflow-y:auto;">
+                            <table class="table table-dark table-sm align-middle mb-0" id="tablaResultadosActivos">
+                                <thead class="table-secondary text-dark">
+                                    <tr>
+                                        <th></th>
+                                        <th>Categoría</th>
+                                        <th>Marca / Modelo</th>
+                                        <th>Serie / IMEI</th>
+                                        <th>Estado</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyResultadosActivos">
+                                    <tr>
+                                        <td colspan="5" class="text-secondary text-center py-3">
+                                            Ingresa IMEI / Serie / Hostname / Modelo y presiona Buscar.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- ACTIVO SELECCIONADO -->
+                    <div class="col-md-6">
+                        <label class="form-label">Activo seleccionado</label>
+                        <div class="input-group">
+                            <input class="form-control" id="txtActivoSel" disabled placeholder="(ninguno)">
+                            <button class="btn btn-outline-info" type="button" id="btnHistorialActivo" disabled>
+                                Historial
+                            </button>
+                        </div>
+
+                        <!-- estos hidden los usa JS / backend -->
+                        <input type="hidden" name="activo_id" id="activo_id_hidden" />
+                        <input type="hidden" id="activo_serial_hidden" />
+                    </div>
+
+                    <!-- TIPO DE MOVIMIENTO -->
+                    <div class="col-md-6">
+                        <label class="form-label">Tipo de movimiento</label>
+                        <select name="tipo" class="form-select" required id="cmbTipo">
+                            <option value="SALIDA">SALIDA (asignar)</option>
+                            <option value="ENTRADA">ENTRADA (devolver)</option>
+                        </select>
+                    </div>
+
+                    <!-- SOLO SALIDA -->
+                    <div class="col-md-4 position-relative" data-mov="salida">
+                        <label class="form-label">Asignado</label>
+                        <input
+                            id="inputAsignadoA"
+                            name="asignado_a"
+                            class="form-control"
+                            autocomplete="off"
+                            placeholder="Nombre de Colaborador"
+                        >
+                        <div
+                            id="listaColaboradores"
+                            class="list-group position-absolute w-100 shadow-sm"
+                            style="z-index: 2000; max-height: 220px; overflow-y: auto; display: none;"
+                        ></div>
+                    </div>
+
+                    <div class="col-md-4" data-mov="salida">
+                        <label class="form-label">Usuario login</label>
+                        <input name="usuario_login" class="form-control" placeholder="jperez / dominio\jperez">
+                    </div>
+
+                    <div class="col-md-4" data-mov="salida">
+                        <label class="form-label">Encargado</label>
+                        <input id="inputEncargado"
+                                name="supervisor"
+                                class="form-control"
+                                placeholder="Supervisor / Jefe de Turno">
+                    </div>
+
+                    <div class="col-md-4" data-mov="salida">
+                        <label class="form-label">Parque / Proyecto</label>
+                        <input id="inputParqueProyecto"
+                                name="parque_proyecto"
+                                class="form-control"
+                                placeholder="Parque Eólico XYZ">
+                    </div>
+
+                    <div class="col-md-4" data-mov="salida">
+                        <label class="form-label">Equipo compartido</label>
+                        <select name="compartido" class="form-select">
+                            <option value="">Seleccionar...</option>
+                            <option value="NO">NO</option>
+                            <option value="SI">SI</option>
+                        </select>
+                    </div>
+
+                    <div class="col-md-4" data-mov="salida">
+                        <label class="form-label">Fecha de asignación</label>
+                        <input name="fecha_asignacion" type="date" class="form-control">
+                    </div>
+
+                    <div class="col-md-4" data-mov="salida">
+                        <label class="form-label">Condición de salida</label>
+                        <input name="condicion_salida" class="form-control" placeholder="Pantalla OK / rayas / etc.">
+                    </div>
+
+
+                    <!-- SOLO ENTRADA -->
+                    <div class="col-md-4" data-mov="entrada">
+                        <label class="form-label">Condición de entrada</label>
+                        <input name="condicion_entrada" class="form-control" placeholder="OK / pantalla rota / etc.">
+                    </div>
+
+                    <div class="col-md-4" data-mov="entrada">
+                        <label class="form-label">Fecha de baja (si es histórico)</label>
+                        <input name="fecha_baja" type="date" class="form-control">
+                    </div>
+
+                    <!-- COMÚN A AMBOS -->
+                    <div class="col-md-4">
+                        <label class="form-label">Ubicación actual</label>
+                        <input name="ubicacion" class="form-control" placeholder="Bodega, Terreno, etc.">
+                    </div>
+
+                    <div class="col-12">
+                        <label class="form-label">Notas</label>
+                        <textarea name="notas" class="form-control" rows="2"></textarea>
+                    </div>
+
+                </form>
+
+                <div id="msgMov" class="text-danger small mt-2"></div>
+
+                <div class="mt-3 d-flex gap-2 justify-content-between">
+                    <button id="btnGuardarMov" class="btn btn-info">
+                        Registrar movimiento
+                    </button>
+
+                    <button class="btn btn-outline-info btn-sm" id="btnVerHistorial">
+                        Ver historial general
+                    </button>
+                </div>
+            </div>
+        </div>
+
+
+                <!-- BUSCADOR DE COLABORADORES -->
+        <div class="card mb-4">
+            <div class="card-body">
+                <h2 class="h5 mb-2">Historial por colaborador</h2>
+                <p class="text-secondary small mb-3">
+                    Busca un colaborador por RUT o nombre y revisa todos los activos e historial de movimientos asociados.
+                </p>
+
+                <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                        <label for="txtBuscarColab" class="form-label">RUT o nombre</label>
+                        <input type="text"
+                               id="txtBuscarColab"
+                               class="form-control"
+                               placeholder="Ej: 16.459.060-7 o García Duarte">
+                    </div>
+                    <div class="col-auto">
+                        <button type="button" class="btn btn-outline-info" id="btnBuscarColab">
+                            Buscar colaborador
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resultados de búsqueda de colaboradores -->
+                <div class="mt-3">
+                    <div class="table-responsive rounded" style="max-height:220px; overflow-y:auto;">
+                        <table class="table table-dark table-sm align-middle mb-0">
+                            <thead class="table-secondary text-dark">
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>RUT</th>
+                                    <th>Cargo</th>
+                                    <th>Proyecto</th>
+                                    <th>Estado</th>
+                                    <th style="width: 120px;">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyColabResultados">
+                                <tr>
+                                    <td colspan="6" class="text-secondary text-center py-3">
+                                        Ingresa RUT o nombre y presiona <strong>Buscar colaborador</strong>.
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Historial del colaborador seleccionado -->
+                <div class="mt-4" id="colabHistorialWrapper" hidden>
+                    <h3 class="h6 mb-2" id="colabResumen"></h3>
+
+                    <!-- Activos actualmente asignados -->
+                    <div class="mb-3">
+                        <h4 class="h6 text-secondary mb-2">Activos actualmente asignados</h4>
+                        <div class="table-responsive border rounded" style="max-height:220px; overflow-y:auto;">
+                            <table class="table table-dark table-sm align-middle mb-0">
+                                <thead class="table-secondary text-dark">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Categoría</th>
+                                        <th>Marca/Modelo</th>
+                                        <th>Serie/IMEI</th>
+                                        <th>Ubicación</th>
+                                        <th>Estado</th>
+                                        <th>Fecha asig.</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyColabActivosActuales">
+                                    <tr>
+                                        <td colspan="7" class="text-secondary text-center py-3">
+                                            Sin activos asignados.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+
+                    <!-- Historial de movimientos -->
+                    <div class="mb-2">
+                        <h4 class="h6 text-secondary mb-2">Historial de movimientos</h4>
+                        <div class="table-responsive border rounded" style="max-height:260px; overflow-y:auto;">
+                            <table class="table table-dark table-sm align-middle mb-0">
+                                <thead class="table-secondary text-dark">
+                                    <tr>
+                                        <th>Fecha/Hora</th>
+                                        <th>Tipo</th>
+                                        <th>Activo</th>
+                                        <th>Asignado a</th>
+                                        <th>Ubicación</th>
+                                        <th>Condición</th>
+                                        <th>Responsable</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="tbodyColabMovimientos">
+                                    <tr>
+                                        <td colspan="7" class="text-secondary text-center py-3">
+                                            Sin movimientos registrados.
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </div>
+
+
+    </main>
+
+    <!-- MODAL: HISTORIAL GENERAL -->
+    <div class="modal fade" id="modalHistorial" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light border border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Historial de Movimientos (Todos)</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="small text-secondary">
+                            Últimos movimientos registrados en el sistema
+                        </div>
+                        <button class="btn btn-sm btn-outline-info" id="btnExportCSV">
+                            Descargar CSV
+                        </button>
+                    </div>
+
+                    <div class="table-responsive border rounded" style="max-height:60vh; overflow-y:auto;">
+                        <table class="table table-dark table-sm align-middle mb-0">
+                            <thead class="table-secondary text-dark">
+                                <tr>
+                                    <th>Fecha/Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Activo</th>
+                                    <th>Asignado a</th>
+                                    <th>Ubicación</th>
+                                    <th>Condición</th>
+                                    <th>Responsable</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyHistorialModal">
+                                <!-- se llena con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="small text-secondary mt-2" id="historialMsg"></div>
+
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: HISTORIAL SOLO DE ESTE ACTIVO -->
+    <div class="modal fade" id="modalHistorialActivo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light border border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">
+                        Historial del Activo
+                        <small class="d-block text-secondary fs-6" id="histActivoHeader"></small>
+                    </h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <div class="d-flex justify-content-between align-items-start mb-3">
+                        <div class="small text-secondary">
+                            Movimientos del activo seleccionado
+                        </div>
+                        <button class="btn btn-sm btn-outline-info" id="btnExportCSVActivo">
+                            Descargar CSV
+                        </button>
+                    </div>
+
+                    <div class="table-responsive border rounded" style="max-height:60vh; overflow-y:auto;">
+                        <table class="table table-dark table-sm align-middle mb-0">
+                            <thead class="table-secondary text-dark">
+                                <tr>
+                                    <th>Fecha/Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Asignado a</th>
+                                    <th>Ubicación</th>
+                                    <th>Condición</th>
+                                    <th>Responsable</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyHistorialActivo">
+                                <!-- se llena con JS -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <hr class="text-secondary mt-4 mb-3" />
+
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div class="small text-secondary">
+                            Historial de cambios técnicos (Hostname, SSD, RAM, SO, ICCID, teléfono, etc.)
+                        </div>
+                    </div>
+
+                    <div class="table-responsive border rounded" style="max-height: 40vh; overflow-y: auto;">
+                        <table class="table table-dark table-sm align-middle mb-0">
+                            <thead class="table-secondary text-dark">
+                                <tr>
+                                    <th>Fecha/Hora</th>
+                                    <th>Campo</th>
+                                    <th>Valor Anterior</th>
+                                    <th>Valor Nuevo</th>
+                                    <th>Motivo</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tbodyHistorialCambios">
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="small text-secondary mt-2" id="historialCambiosMsg"></div>
+
+                    <div class="small text-secondary mt-2" id="historialActivoMsg"></div>
+
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast container -->
+    <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+        <div id="appToast" class="toast align-items-center border-0 text-light" role="alert" aria-live="assertive"
+            aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMsg">...</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="./lib/bootstrap.bundle.min.js"></script>
+    <script type="module" src="./js/api.js"></script>
+    <script type="module" src="./js/movimientos.js"></script>
+</body>
+
+</html>

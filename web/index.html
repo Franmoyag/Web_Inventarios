@@ -1,0 +1,482 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventario — Panel</title>
+    <link rel="icon" type="image/svg+xml" href="./lib/header-logo.svg">
+    <link rel="alternate icon" type="image/png" href="./lib/header-logo.png">
+    
+
+    <!-- Bootstrap local y estilos -->
+    <link rel="stylesheet" href="./lib/bootstrap.min.css" />
+    <link rel="stylesheet" href="./css/styles.css" />
+
+    <style>
+        body {
+            background: radial-gradient(1200px 600px at 10% -10%, #0b1a2a 0, #0a0f1e 50%, #0a0f1e 100%);
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .navbar {
+            border-bottom: 1px solid rgba(255, 255, 255, .06);
+            background-color: #0a0f1e !important;
+        }
+
+        .hero {
+            border-bottom: 1px solid rgba(255, 255, 255, .06);
+        }
+
+        .card {
+            border: 1px solid rgba(255, 255, 255, .08);
+            background-color: #1a1f2e;
+            backdrop-filter: blur(6px);
+        }
+
+        .form-select {
+            background-color: #1a1f2e !important;
+            color: #fff !important;
+            border-color: rgba(255, 255, 255, .2) !important;
+        }
+
+        .form-select:focus {
+            background-color: #1a1f2e !important;
+            color: #fff !important;
+            border-color: #0dcaf0 !important;
+            box-shadow: 0 0 0 .25rem rgba(13, 202, 240, .25) !important;
+        }
+
+        .form-select option {
+            background-color: #1a1f2e;
+            color: #fff;
+        }
+
+        .text-secondary {
+            color: rgba(255, 255, 255, .6) !important;
+        }
+
+        .toast.text-bg-dark {
+            background-color: #1a1f2e !important;
+            border: 1px solid rgba(255, 255, 255, .2) !important;
+            color: #fff !important;
+        }
+
+        .is-invalid {
+            border-color: #dc3545 !important;
+        }
+
+        .invalid-msg {
+            font-size: .8rem;
+            color: #dc3545;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container">
+            <a class="navbar-brand text-info" href="/">Inventario</a>
+            <ul class="navbar-nav ms-3">
+                <li class="nav-item"><a class="nav-link" href="/activos.html">Activos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/movimientos.html">Movimientos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/perifericos.html">Periféricos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/usuarios.html">Usuarios</a></li>
+                <li class="nav-item"><a class="nav-link" href="/reportes.html">Reportes</a></li>
+                <li class="nav-item"><a class="nav-link" href="/acta_entrega.html">Acta de entrega</a></li>
+            </ul>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <small id="userInfo" class="text-secondary"></small>
+                <button id="btnLogout" class="btn btn-outline-light btn-sm">Salir</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HEADER / ACCIONES RÁPIDAS -->
+    <section class="hero py-4">
+        <div class="container">
+            <h1 class="h4 mb-1">Registro rápido</h1>
+            <p class="text-secondary mb-4">Elige qué deseas registrar ahora mismo.</p>
+
+            <div class="row g-3">
+                <!-- Celular -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">Dispositivo Móvil</h5>
+                            <p class="card-text text-secondary">Celulares con IMEI e ICCID.</p>
+                            <button class="btn btn-info mt-auto" id="btnOpenCelular">
+                                Registrar Móvil
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Notebook -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">Notebook</h5>
+                            <p class="card-text text-secondary">Hostname, serie y especificaciones.</p>
+                            <button class="btn btn-info mt-auto" id="btnOpenNotebook">
+                                Registrar Notebook
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Periférico -->
+                <div class="col-md-4">
+                    <div class="card h-100">
+                        <div class="card-body d-flex flex-column">
+                            <h5 class="card-title">Periférico</h5>
+                            <p class="card-text text-secondary">Control de stock por entradas/salidas.</p>
+                            <button class="btn btn-info mt-auto" id="btnOpenPeriferico">
+                                Registrar Periférico
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Accesos rápidos -->
+            <div class="d-flex gap-2 mt-4 flex-wrap">
+                <a href="/activos.html" class="btn btn-outline-info btn-sm">Ver Activos</a>
+                <a href="/movimientos.html" class="btn btn-outline-info btn-sm">Ver Movimientos</a>
+                <a href="/perifericos.html" class="btn btn-outline-info btn-sm">Ver Periféricos</a>
+                <a href="/reportes.html" class="btn btn-outline-info btn-sm">Reportes</a>
+                <a href="/usuarios.html" class="btn btn-outline-info btn-sm">Usuarios</a>
+            </div>
+        </div>
+    </section>
+
+
+    <!-- ============ MODAL: NUEVO CELULAR ============ -->
+    <div class="modal fade" id="modalCelular" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light border border-secondary">
+
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Nuevo Celular</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="formCelular" class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Modelo / Nombre comercial *</label>
+                            <input class="form-control" name="modelo" required
+                                placeholder="MOTO G05 / iPhone 12 / etc.">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Marca</label>
+                            <input class="form-control" name="marca" placeholder="Motorola / Apple / Samsung">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">IMEI *</label>
+                            <input class="form-control" name="serial_imei" required placeholder="3594xxxxxxxxxxx">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">ICCID (SIM)</label>
+                            <input class="form-control" name="iccid" placeholder="893510xxxxxxxxxxxx">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Número teléfono (PCS)</label>
+                            <input class="form-control" name="telefono" placeholder="56987654321">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Estado inicial</label>
+                            <select class="form-select" name="estado">
+                                <option value="DISPONIBLE">DISPONIBLE (en bodega)</option>
+                                <option value="ASIGNADO">ASIGNADO</option>
+                                <option value="REPARACION">REPARACIÓN</option>
+                                <option value="BAJA">BAJA</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Colaborador actual</label>
+                            <input class="form-control" name="colaborador_actual"
+                                placeholder="Quién lo tiene (si ya sale asignado)">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Ubicación / Bodega actual</label>
+                            <input class="form-control" name="ubicacion" placeholder="Bodega / Terreno / Oficina">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" name="observaciones" rows="2"
+                                placeholder="Equipo con mica nueva / leve rayón / etc."></textarea>
+                        </div>
+
+                        <!-- ocultos -->
+                        <input type="hidden" name="categoria" value="celular" />
+                        <input type="hidden" name="nombre" id="cel_nombre_hidden" />
+
+                        <div class="col-12 text-danger small" id="msgCelError"></div>
+                    </form>
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-info" id="btnGuardarCelular">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============ MODAL: NUEVO NOTEBOOK ============ -->
+    <div class="modal fade" id="modalNotebook" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light border border-secondary">
+
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Nuevo Notebook</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="formNotebook" class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Marca</label>
+                            <input class="form-control" name="marca">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Modelo</label>
+                            <input class="form-control" name="modelo">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">N° de Serie*</label>
+                            <input class="form-control" name="serial_imei" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del Equipo</label>
+                            <input class="form-control" name="hostname">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">SSD</label>
+                            <input class="form-control" name="nb_ssd">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">RAM</label>
+                            <input class="form-control" name="nb_ram"">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Mobo</label>
+                            <input class="form-control" name="nb_mobo">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">CPU</label>
+                            <input class="form-control" name="nb_cpu" placeholder="Procesador">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">SO</label>
+                            <input class="form-control" name="nb_so" placeholder="Version de Windows...">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">TPM 2.0</label>
+                            <select class="form-select" name="nb_tpm2">
+                                <option value="">Seleccionar...</option>
+                                <option value="SI">SI</option>
+                                <option value="NO">NO</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Estado inicial</label>
+                            <select class="form-select" name="estado">
+                                <option value="">Seleccionar...</option>
+                                <option value="DISPONIBLE">DISPONIBLE</option>
+                                <option value="ASIGNADO">ASIGNADO</option>
+                                <option value="REPARACION">REPARACIÓN</option>
+                                <option value="BAJA">BAJA</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Colaborador actual</label>
+                            <input class="form-control" name="colaborador_actual">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Usuario login</label>
+                            <input class="form-control" name="usuario_login">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">PM Encargado</label>
+                            <input class="form-control" name="encargado">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Parque / Proyecto</label>
+                            <input class="form-control" name="parque_proyecto">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Ubicación / Bodega actual</label>
+                            <input class="form-control" name="ubicacion">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha asignación</label>
+                            <input class="form-control" name="fecha_asignacion" type="date">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha baja (si es histórico)</label>
+                            <input class="form-control" name="fecha_baja" type="date">
+                        </div>
+
+
+                        <div class="col-12">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" name="observaciones" rows="2" 
+                            placeholder="RES STANDARD / pantalla con rayas leves / sin cargador"></textarea>
+                        </div>
+
+                        <!-- ocultos -->
+                        <input type="hidden" name="categoria" value="notebook" />
+                        <input type="hidden" name="nombre" id="nb_nombre_hidden" />
+
+                        <div class="col-12 text-danger small" id="msgNotebookError"></div>
+                    </form>
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-info" id="btnGuardarNotebook">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- ============ MODAL: NUEVO PERIFÉRICO ============ -->
+    <div class="modal fade" id="modalPeriferico" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light border border-secondary">
+
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Nuevo Periférico</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="formPeriferico" class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Categoría *</label>
+                            <select class="form-select" name="categoria" required>
+                                <option value="">Selecciona...</option>
+                                <option value="mouse">Mouse</option>
+                                <option value="teclado">Teclado</option>
+                                <option value="cargador">Cargador</option>
+                                <option value="cable">Cable</option>
+                                <option value="hub">Hub</option>
+                                <option value="adaptador">Adaptador</option>
+                                <option value="audifonos">Audífonos</option>
+                                <option value="otro">Otro</option>
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre *</label>
+                            <input class="form-control" name="nombre" required placeholder="Cargador USB-C 65W">
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Marca</label>
+                            <input class="form-control" name="marca" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">Modelo</label>
+                            <input class="form-control" name="modelo" />
+                        </div>
+
+                        <div class="col-md-4">
+                            <label class="form-label">SKU / Código interno</label>
+                            <input class="form-control" name="telefono" />
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Ubicación</label>
+                            <input class="form-control" name="ubicacion" placeholder="Bodega, Oficina, etc.">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Stock inicial (unidades)</label>
+                            <input class="form-control" name="unidades" type="number" value="0">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" name="observaciones" rows="2"
+                                placeholder="Caja abierta / faltan tapas / etc."></textarea>
+                        </div>
+
+                        <!-- ocultos -->
+                        <input type="hidden" name="serial_imei" value="">
+                        <input type="hidden" name="estado" value="DISPONIBLE">
+                        <input type="hidden" name="fecha_asignacion" value="">
+                        <input type="hidden" name="fecha_baja" value="">
+                        <input type="hidden" name="usuario_login" value="">
+                        <input type="hidden" name="encargado" value="">
+                        <input type="hidden" name="parque_proyecto" value="">
+                        <input type="hidden" name="colaborador_actual" value="">
+
+                        <div class="col-12 text-danger small" id="msgPerifError"></div>
+                    </form>
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-info" id="btnGuardarPeriferico">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Toast (notificaciones arriba a la derecha) -->
+    <div class="position-fixed top-0 end-0 p-3" style="z-index:1080">
+        <div id="appToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive"
+            aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMsg">...</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JS -->
+    <script src="./lib/bootstrap.bundle.min.js"></script>
+    <script type="module" src="./js/api.js"></script>
+    <script type="module" src="./js/dashboard.js"></script>
+</body>
+
+</html>

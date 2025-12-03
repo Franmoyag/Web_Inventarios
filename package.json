@@ -1,0 +1,31 @@
+{
+  "name": "web_inventarios",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "nodemon server/app.js",
+    "start": "node server/app.js",
+    "audit": "npm audit --audit-level=high",
+    "ci": "npm ci --ignore-scripts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcryptjs": "2.4.3",
+    "chart.js": "4.5.1",
+    "cors": "2.8.5",
+    "docxtemplater": "3.67.5",
+    "dotenv": "17.2.3",
+    "express": "5.1.0",
+    "express-rate-limit": "6.11.2",
+    "express-session": "1.18.2",
+    "helmet": "7.1.0",
+    "mysql2": "3.15.3",
+    "nodemon": "3.1.10",
+    "pizzip": "3.2.0"
+  }
+}

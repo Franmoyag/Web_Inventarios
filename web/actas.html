@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Inventario — Historial de Actas</title>
+
+    <!-- Bootstrap y estilos globales (igual que en movimientos / activos) -->
+    <link rel="stylesheet" href="./lib/bootstrap.min.css">
+    <link rel="stylesheet" href="./css/styles.css">
+
+    <style>
+        body {
+            background-color: #0a0f1e;
+            color: #fff;
+            min-height: 100vh;
+        }
+
+        .card {
+            background: radial-gradient(circle at top left, #18243a 0, #101627 40%, #0a0f1e 100%);
+            border: 1px solid rgba(255, 255, 255, .08);
+            box-shadow: 0 0 25px rgba(0, 0, 0, .5);
+        }
+
+        .table thead th {
+            border-color: rgba(255, 255, 255, .1);
+            font-size: .8rem;
+            text-transform: uppercase;
+            letter-spacing: .06em;
+            color: #9ca3af;
+        }
+
+        .table tbody td {
+            vertical-align: middle;
+            border-color: rgba(255, 255, 255, .06);
+            font-size: .9rem;
+        }
+
+        .badge-fecha {
+            font-size: .75rem;
+            background-color: rgba(56, 189, 248, .16);
+            border: 1px solid rgba(56, 189, 248, .4);
+        }
+
+        .search-input {
+            background-color: #111827;
+            border-color: rgba(255, 255, 255, .2);
+            color: #e5e7eb;
+        }
+
+        .search-input:focus {
+            background-color: #020617;
+            color: #fff;
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 .25rem rgba(14, 165, 233, .25);
+        }
+
+        .table-responsive {
+            max-height: 70vh;
+        }
+    </style>
+</head>
+
+<body class="bg-dark text-light">
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container">
+            <a class="navbar-brand text-info" href="/">Inventario</a>
+            <ul class="navbar-nav ms-3">
+                <li class="nav-item"><a class="nav-link" href="/activos.html">Activos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/movimientos.html">Movimientos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/perifericos.html">Periféricos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/usuarios.html">Usuarios</a></li>
+                <li class="nav-item"><a class="nav-link" href="/reportes.html">Reportes</a></li>
+                <li class="nav-item"><a class="nav-link" href="/acta_entrega.html">Acta de entrega</a></li>
+            </ul>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <small id="userInfo" class="text-secondary"></small>
+                <button id="btnLogout" class="btn btn-outline-light btn-sm">Salir</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container py-4">
+        <!-- Encabezado -->
+        <div class="d-flex flex-wrap justify-content-between align-items-end gap-3 mb-3">
+            <div>
+                <h1 class="h4 mb-1">Historial de actas de entrega</h1>
+                <p class="text-secondary small mb-0">
+                    Aquí puedes revisar todos los informes (actas) que se han generado para los colaboradores,
+                    con acceso rápido al PDF generado.
+                </p>
+            </div>
+
+            <!-- Buscador -->
+            <div style="min-width:260px;max-width:320px;">
+                <label class="form-label text-secondary small mb-1">
+                    Buscar por nombre, RUT o centro de costo
+                </label>
+                <input id="txtSearch" type="text" class="form-control form-control-sm search-input"
+                    placeholder="Ej: Juan, 11.111.111-1, TI, etc.">
+            </div>
+        </div>
+
+        <!-- Mensajes -->
+        <div id="errorMsg" class="alert alert-danger py-2 px-3 small d-none"></div>
+
+        <!-- Tabla de historial -->
+        <div class="card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h6 mb-0 text-secondary text-uppercase">Actas generadas</h2>
+                    <small id="totalActas" class="text-secondary"></small>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-hover align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th style="width: 70px;">ID</th>
+                                <th style="min-width: 220px;">Colaborador</th>
+                                <th style="width: 120px;">Fecha acta</th>
+                                <th style="min-width: 250px;">Descripción</th>
+                                <th style="width: 150px;">Creado en</th>
+                                <th style="width: 110px;">Documento</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tablaActasBody"></tbody>
+                    </table>
+                </div>
+
+                <div id="emptyMsg" class="text-center text-secondary small py-3 d-none">
+                    No se han generado actas todavía.
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script type="module" src="./js/actas.js"></script>
+</body>
+
+</html>

@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colaboradores</title>
+
+    <link rel="stylesheet" href="./lib/bootstrap.min.css">
+</head>
+
+<body>
+
+<nav class="navbar navbar-dark bg-dark px-3">
+    <span class="navbar-brand mb-0 h1">Colaboradores</span>
+    <small id="userInfo" class="text-light"></small>
+    <button id="btnLogout" class="btn btn-outline-light btn-sm">Salir</button>
+</nav>
+
+<div class="container py-4">
+
+    <div class="d-flex justify-content-between mb-3">
+        <h3>Listado de colaboradores</h3>
+
+        <div class="btn-group">
+            <button id="btnGroupProyectos" class="btn btn-info btn-sm active">Por Proyectos</button>
+            <button id="btnGroupEncargados" class="btn btn-outline-info btn-sm">Por Encargados</button>
+        </div>
+    </div>
+
+    <div id="cardsContainer" class="row g-3 mb-4"></div>
+
+    <section id="selectedInfo" class="d-none">
+        <h4 id="selectedTitle"></h4>
+        <p id="selectedSubtitle" class="text-secondary"></p>
+        <p id="selectedCount" class="fw-bold"></p>
+
+        <input id="txtSearch" class="form-control mb-3" placeholder="Buscar por nombre o RUT...">
+
+        <div class="table-responsive">
+            <table class="table table-dark table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Nombre</th>
+                        <th>RUT</th>
+                        <th>Cargo</th>
+                        <th>Proyecto</th>
+                        <th>Encargado</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaColaboradoresBody"></tbody>
+            </table>
+        </div>
+
+        <div id="emptyMsg" class="text-center text-secondary d-none">No hay colaboradores para mostrar.</div>
+        <div id="errorMsg" class="text-danger text-center d-none">Error al cargar datos.</div>
+    </section>
+</div>
+
+<script src="./lib/bootstrap.bundle.min.js"></script>
+<script type="module" src="./js/api.js"></script>
+<script type="module" src="./js/colaboradores.js"></script>
+
+</body>
+</html>

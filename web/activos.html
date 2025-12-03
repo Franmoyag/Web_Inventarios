@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="es" data-bs-theme="dark">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Inventario — Activos</title>
+
+    <link rel="stylesheet" href="./lib/bootstrap.min.css" />
+    <link rel="stylesheet" href="/css/styles.css">
+    <link rel="icon" type="image/svg+xml" href="./lib/header-logo.svg">
+
+</head>
+
+<body>
+
+    <!-- NAVBAR -->
+    <nav class="navbar navbar-expand-lg bg-body-tertiary">
+        <div class="container">
+            <a class="navbar-brand text-info" href="/">Inventario</a>
+            <ul class="navbar-nav ms-3">
+                <li class="nav-item"><a class="nav-link" href="/activos.html">Activos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/movimientos.html">Movimientos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/perifericos.html">Periféricos</a></li>
+                <li class="nav-item"><a class="nav-link" href="/usuarios.html">Usuarios</a></li>
+                <li class="nav-item"><a class="nav-link" href="/reportes.html">Reportes</a></li>
+                <li class="nav-item"><a class="nav-link" href="/acta_entrega.html">Acta de entrega</a></li>
+            </ul>
+            <div class="ms-auto d-flex align-items-center gap-3">
+                <small id="userInfo" class="text-secondary"></small>
+                <button id="btnLogout" class="btn btn-outline-light btn-sm">Salir</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container py-4">
+
+        <!-- Filtros -->
+        <div class="search-card rounded-3 p-3 mb-3">
+            <div class="d-flex flex-wrap gap-3 align-items-end">
+                <div style="min-width:260px;">
+                    <label class="form-label text-secondary small mb-1">Buscar</label>
+                    <input id="txtSearch" class="form-control form-control-sm"
+                        placeholder="ID, serie, nombre, asignación…">
+                </div>
+
+                <div style="min-width:180px;">
+                    <label class="form-label text-secondary small mb-1">Categoría</label>
+                    <select id="filtroCategoria" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                        <option value="celular">Celular</option>
+                        <option value="notebook">Notebook</option>
+                        <option value="periferico">Periférico</option>
+                    </select>
+                </div>
+
+                <div style="min-width:150px;">
+                    <label class="form-label text-secondary small mb-1">Estado</label>
+                    <select id="filtroEstado" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                        <option value="DISPONIBLE">DISPONIBLE</option>
+                        <option value="ASIGNADO">ASIGNADO</option>
+                        <option value="REPARACION">REPARACION</option>
+                        <option value="BAJA">BAJA</option>
+                        <option value="OBSOLETO">OBSOLETO</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabla -->
+        <div class="table-responsive">
+            <table class="table table-sm table-hover align-middle text-nowrap">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Categoria</th>
+                        <th>Serie</th>
+                        <th>Nombre de Equipo</th>
+                        <th>Estado</th>
+                        <th>Asignación</th>
+                    </tr>
+                </thead>
+                <tbody id="tablaActivosBody"><!-- filas dinámicas --></tbody>
+            </table>
+        </div>
+
+        <!-- Mensajes -->
+        <div id="emptyMsg" class="alert alert-info d-none">No hay resultados.</div>
+        <div id="errorMsg" class="alert alert-danger d-none">Ocurrió un error cargando los datos.</div>
+
+        <!-- Paginación -->
+        <div class="d-flex justify-content-between align-items-center mt-3">
+            <div id="pageInfo" class="small text-secondary">Página 1 de 1 — 0 resultados</div>
+            <div class="pagination-controls d-flex gap-2">
+                <button id="btnPrev" class="btn btn-outline-light btn-sm" disabled>Anterior</button>
+                <button id="btnNext" class="btn btn-outline-light btn-sm" disabled>Siguiente</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Acciones por fila -->
+    <div class="modal fade" id="modalRowActions" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content" style="background:#0f1324;border:1px solid rgba(255,255,255,.12);">
+                <div class="modal-header">
+                    <h5 class="modal-title">Acciones</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" id="rowAction_id">
+                    <div class="d-grid gap-2">
+                        <div class="d-grid gap-2">
+                            <button id="btnVerHistorialSeleccionado" class="btn btn-outline-info">Ver historial</button>
+                            <button id="btnAccEditar" class="btn btn-outline-warning">Editar</button>
+                            <button id="btnAccReasignar" class="btn btn-outline-light">Reasignar colaborador</button>
+                            <button id="btnAccEliminar" class="btn btn-outline-danger">Eliminar</button>
+                        </div>
+                    </div>
+                    <div class="small text-secondary mt-3">Tip: estas acciones corresponden a la fila seleccionada.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Editar (ya existente) -->
+    <div class="modal fade" id="modalEditActivo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-light border border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Editar activo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="formEditActivo" class="row g-3">
+                        <input type="hidden" name="id" id="edit_id">
+
+                        <!-- Resumen solo lectura -->
+                        <div class="col-12">
+                            <label class="form-label text-secondary small">Resumen del activo</label>
+                            <div class="p-2 rounded border border-secondary small">
+                                <div><strong>ID:</strong> <span id="info_id"></span></div>
+                                <div><strong>Categoría:</strong> <span id="info_categoria"></span></div>
+                                <div><strong>Marca / Modelo:</strong> <span id="info_marca_modelo"></span></div>
+                                <div><strong>Serie / IMEI:</strong> <span id="info_serie"></span></div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <hr class="text-secondary">
+                            <p class="small text-secondary mb-1">
+                                <strong>Notebook:</strong> solo se edita <em>Nombre del equipo, SSD, RAM y Versión del
+                                    SO</em>.<br>
+                                <strong>Celular:</strong> solo se edita <em>ICCID y PCS (número de teléfono)</em>.
+                            </p>
+                        </div>
+
+                        <!-- CAMPOS NOTEBOOK -->
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre del equipo (Notebook)</label>
+                            <input class="form-control" name="hostname" id="edit_hostname">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">SSD (Notebook)</label>
+                            <input class="form-control" name="nb_ssd" id="edit_nb_ssd">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">RAM (Notebook)</label>
+                            <input class="form-control" name="nb_ram" id="edit_nb_ram">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Versión del SO (Notebook)</label>
+                            <input class="form-control" name="nb_so" id="edit_nb_so">
+                        </div>
+
+                        <!-- CAMPOS CELULAR -->
+                        <div class="col-md-6">
+                            <label class="form-label">ICCID (Simcard)</label>
+                            <input class="form-control" name="iccid" id="edit_iccid">
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">PCS / Número de teléfono</label>
+                            <input class="form-control" name="telefono" id="edit_telefono">
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Motivo del Cambio</label>
+                            <textarea class="form-control" id="edit_motivo"
+                                placeholder="Observacion respecto a la Modificación..."></textarea>
+                        </div>
+                    </form>
+
+                </div>
+                <div class="modal-footer">
+                    <button id="btnGuardarCambios" class="btn btn-info">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL REASIGNAR COLABORADOR -->
+    <div class="modal fade" id="modalReasignarColab" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light border border-info">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Reasignar colaborador</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <form id="formReasignarColab" class="row g-3">
+                        <input type="hidden" id="reasign_id">
+
+                        <div class="col-12">
+                            <label class="form-label">Activo</label>
+                            <input class="form-control" id="reasign_activo" readonly>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Colaborador actual</label>
+                            <input class="form-control" id="reasign_colab_actual" readonly>
+                        </div>
+
+                        <div class="position-relative">
+                            <label class="form-label">Nuevo Colaborador</label>
+                            <input class="form-control" id="reasign_colab_nuevo" name="reasign_colab_nuevo"
+                                autocomplete="off" placeholder="Buscar colaborador...">
+
+                            <div id="listaColabReasign" class="list-group position-absolute w-100 shadow-sm"
+                                style="z-index:2050; max-height:220px; overflow-y:auto; display:none;">
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <label class="form-label">Observaciones (opcional)</label>
+                            <textarea class="form-control" id="reasign_notas" rows="3"></textarea>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-info" id="btnConfirmarReasignacion">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- MODAL CAMBIO DE ESTADO -->
+    <div class="modal fade" id="modalEstadoActivo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content bg-dark text-light border border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Cambiar estado del activo</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <input type="hidden" id="estado_id">
+
+                    <div class="mb-3">
+                        <label class="form-label">Estado actual</label>
+                        <input type="text" class="form-control" id="estado_actual" disabled>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nuevo estado</label>
+                        <select class="form-select" id="estado_nuevo">
+                            <option value="DISPONIBLE">DISPONIBLE</option>
+                            <option value="ASIGNADO">ASIGNADO</option>
+                            <option value="OBSOLETO">OBSOLETO</option>
+                            <option value="BAJA">BAJA</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-0">
+                        <label class="form-label">Motivo del cambio</label>
+                        <textarea class="form-control" id="estado_motivo" rows="2"
+                            placeholder="Ej: equipo obsoleto, dado de baja, reasignación, etc."></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-info btn-sm" id="btnGuardarEstado">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- MODAL DETALLE ACTIVO -->
+    <div class="modal fade" id="modalDetalleActivo" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light border border-secondary">
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Detalle del activo</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div id="detalleContenido" class="small"></div>
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Toast -->
+    <div class="position-fixed bottom-0 end-0 p-3" style="z-index:1080;">
+        <div id="appToast" class="toast align-items-center text-bg-dark border-0" role="alert" aria-live="assertive"
+            aria-atomic="true">
+            <div class="d-flex">
+                <div class="toast-body" id="toastMsg">...</div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        </div>
+    </div>
+
+    <script src="./lib/bootstrap.bundle.min.js"></script>
+    <script type="module" src="./js/api.js"></script>
+    <script type="module" src="./js/activos.js"></script>
+</body>
+
+</html>
