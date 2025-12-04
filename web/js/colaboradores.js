@@ -169,6 +169,11 @@ function applyFilter() {
               ${row.activo ? "checked" : ""}>
           </div>
         </td>
+        <td>
+          <button class="btn btn-sm btn-outline-info btnEditarColaborador" data-id="${row.id}">
+            ✏️ Editar
+          </button>
+        </td>
       </tr>
     `
     )
@@ -241,5 +246,122 @@ tablaBody.addEventListener("change", async (e) => {
       err.message || "Error al cambiar estado del colaborador.",
       "danger"
     );
+  }
+});
+
+
+// ABRIR MODAL EDITAR
+tablaBody.addEventListener("click", async (e) => {
+  const btn = e.target.closest(".btnEditarColaborador");
+  if (!btn) return;
+
+  const id = btn.dataset.id;
+
+  try {
+    const data = await api(`/api/collaborators/${id}`);
+    if (!data.ok) {
+      showToast("No se pudieron obtener los datos del colaborador", "danger");
+      return;
+    }
+
+    const col = data.colaborador;
+
+    // Llenar campos
+    $("#editId").value = col.id;
+    $("#editNombre").value = col.nombre;
+    $("#editRUT").value = col.rut ?? "";
+    $("#editGenero").value = col.genero ?? "";
+
+    // Llenar selects dinámicos
+    await cargarListasEditar(col);
+
+    // Abrir modal
+    const modal = new bootstrap.Modal($("#modalEditarColaborador"));
+    modal.show();
+
+  } catch (err) {
+    showToast("Error al abrir editor", "danger");
+  }
+});
+
+
+
+async function cargarListasEditar(col) {
+  // 1) CARGOS
+  const cargos = await api("/api/collaborators/cargos");
+  $("#editCargo").innerHTML = (cargos.items || [])
+    .map(
+      (c) =>
+        `<option value="${c.id}" ${
+          c.id == col.cargo_id ? "selected" : ""
+        }>${c.nombre}</option>`
+    )
+    .join("");
+
+  // 2) PROYECTOS
+  const proyectos = await api("/api/collaborators/proyectos");
+  $("#editProyecto").innerHTML = (proyectos.items || [])
+    .map(
+      (p) =>
+        `<option value="${p.id}" ${
+          p.id == col.proyecto_id ? "selected" : ""
+        }>${p.nombre}</option>`
+    )
+    .join("");
+
+  // 3) ENCARGADOS  ✅ ahora usamos /encargados en vez de ?q=
+  const resEncargados = await api("/api/collaborators/encargados");
+  const encargados = resEncargados.items || [];
+
+  $("#editEncargado").innerHTML =
+    `<option value="">(Ninguno)</option>` +
+    encargados
+      .map(
+        (e) =>
+          `<option value="${e.id}" ${
+            e.id == col.encargado_id ? "selected" : ""
+          }>${e.nombre}</option>`
+      )
+      .join("");
+}
+
+
+
+
+
+$("#btnGuardarColaborador").addEventListener("click", async () => {
+  const id = $("#editId").value;
+
+  const payload = {
+    nombre: $("#editNombre").value.trim(),
+    rut: $("#editRUT").value.trim(),
+    cargo_id: $("#editCargo").value,
+    proyecto_id: $("#editProyecto").value,
+    encargado_id: $("#editEncargado").value || null,
+    genero: $("#editGenero").value || null,
+  };
+
+  try {
+    const data = await api(`/api/collaborators/${id}`, {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!data.ok) {
+      showToast("No se pudieron guardar los cambios", "danger");
+      return;
+    }
+
+    showToast("Colaborador actualizado correctamente", "success");
+
+    // Cerrar modal
+    bootstrap.Modal.getInstance($("#modalEditarColaborador")).hide();
+
+    // Recargar tabla
+    loadDetails();
+
+  } catch (err) {
+    showToast("Error al guardar cambios", "danger");
   }
 });

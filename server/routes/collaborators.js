@@ -142,6 +142,59 @@ router.get("/encargados", verifyAuth, async (req, res) => {
   }
 });
 
+
+
+
+
+
+// ���� NUEVO: lista simple de cargos
+router.get("/cargos", verifyAuth, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT id, nombre
+      FROM cargos
+      ORDER BY nombre ASC
+      `
+    );
+
+    res.json({ ok: true, items: rows });
+  } catch (err) {
+    console.error("[/api/collaborators/cargos] Error:", err);
+    res
+      .status(500)
+      .json({ ok: false, error: "Error al obtener lista de cargos." });
+  }
+});
+
+// ���� NUEVO: lista simple de proyectos
+router.get("/proyectos", verifyAuth, async (req, res) => {
+  try {
+    const [rows] = await pool.query(
+      `
+      SELECT id, nombre
+      FROM proyectos
+      ORDER BY nombre ASC
+      `
+    );
+
+    res.json({ ok: true, items: rows });
+  } catch (err) {
+    console.error("[/api/collaborators/proyectos] Error:", err);
+    res
+      .status(500)
+      .json({ ok: false, error: "Error al obtener lista de proyectos." });
+  }
+});
+
+
+
+
+
+
+
+
+
 /**
  * GET /api/collaborators/list
  * Detalle de colaboradores filtrado por proyecto o encargado
@@ -404,5 +457,64 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
       .json({ error: "Error al obtener historial del colaborador" });
   }
 });
+
+
+/**
+ * GET /api/collaborators/:id
+ * Obtener datos del colaborador
+ */
+router.get("/:id", verifyAuth, async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    const [rows] = await pool.query(`
+      SELECT *
+      FROM colaboradores
+      WHERE id = ?
+      LIMIT 1
+    `, [id]);
+
+    if (!rows.length)
+      return res.json({ ok: false, error: "Colaborador no encontrado" });
+
+    res.json({ ok: true, colaborador: rows[0] });
+
+  } catch (err) {
+    res.json({ ok: false, error: "Error al obtener colaborador" });
+  }
+});
+
+
+/**
+ * PUT /api/collaborators/:id
+ * Actualizar datos del colaborador
+ */
+router.put("/:id", verifyAuth, async (req, res) => {
+  try {
+    const id = req.params.id;
+    const { nombre, rut, genero, cargo_id, proyecto_id, encargado_id } = req.body;
+
+    await pool.query(`
+      UPDATE colaboradores SET
+        nombre = ?,
+        rut = ?,
+        genero = ?,
+        cargo_id = ?,
+        proyecto_id = ?,
+        encargado_id = ?
+      WHERE id = ?
+    `, [nombre, rut, genero, cargo_id, proyecto_id, encargado_id, id]);
+
+    res.json({ ok: true });
+
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, error: "Error al actualizar colaborador" });
+  }
+});
+
+
+
+
 
 export default router;

@@ -127,6 +127,7 @@
                             <th>Proyecto</th>
                             <th>Encargado</th>
                             <th>Estado</th>
+                            <th>Acciones</th>
                         </tr>
                     </thead>
                     <tbody id="tablaColaboradoresBody"></tbody>
@@ -137,6 +138,70 @@
             <div id="errorMsg" class="text-danger text-center d-none">Error al cargar datos.</div>
         </section>
     </div>
+
+
+    <!-- MODAL EDITAR COLABORADOR -->
+    <div class="modal fade" id="modalEditarColaborador" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-light">
+
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Editar Colaborador</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <form id="formEditarColaborador" class="row g-3">
+
+                        <input type="hidden" id="editId">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre</label>
+                            <input class="form-control" id="editNombre" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">RUT</label>
+                            <input class="form-control" id="editRUT" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Cargo</label>
+                            <select class="form-select" id="editCargo" required></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Proyecto</label>
+                            <select class="form-select" id="editProyecto" required></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Encargado</label>
+                            <select class="form-select" id="editEncargado"></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Género</label>
+                            <select class="form-select" id="editGenero">
+                                <option value="">Sin especificar</option>
+                                <option value="HOMBRE">HOMBRE</option>
+                                <option value="MUJER">MUJER</option>
+                            </select>
+                        </div>
+
+                    </form>
+
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-info" id="btnGuardarColaborador">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
 
     <script src="./lib/bootstrap.bundle.min.js"></script>
     <script type="module" src="./js/api.js"></script>
