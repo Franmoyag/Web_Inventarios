@@ -7,7 +7,7 @@ const router = Router();
 
 /**
  * GET /api/collaborators?q=texto
- * Autocomplete rápido (lo usas en otros lados)
+ * Autocomplete rápido (lo usas en otros lados, input de búsqueda simple)
  */
 router.get("/", verifyAuth, async (req, res) => {
   const q = (req.query.q || "").trim();
@@ -47,7 +47,7 @@ router.get("/", verifyAuth, async (req, res) => {
 
 /**
  * GET /api/collaborators/search?q=texto
- * Búsqueda para tu página de acta (retorna { ok, items })
+ * Búsqueda de colaboradores para la página de actas (retorna { ok, items })
  */
 router.get("/search", verifyAuth, async (req, res) => {
   const q = (req.query.q || "").trim();
@@ -158,7 +158,7 @@ router.get("/list", verifyAuth, async (req, res) => {
         .json({ ok: false, error: "Debe indicar proyecto_id o encargado_id." });
     }
 
-    let where = "c.activo = 1";
+    let where = "c.activo IN (0,1)";
     const params = [];
 
     if (proyecto_id) {
@@ -183,6 +183,7 @@ router.get("/list", verifyAuth, async (req, res) => {
         c.nombre,
         c.rut,
         c.genero,
+        c.activo,
         cargos.nombre AS cargo,
         p.nombre      AS proyecto,
         p.ciudad,
@@ -203,7 +204,101 @@ router.get("/list", verifyAuth, async (req, res) => {
     res.json({ ok: true, items: rows });
   } catch (err) {
     console.error("[/api/collaborators/list] Error:", err);
-    res.status(500).json({ ok: false, error: "Error al obtener colaboradores." });
+    res
+      .status(500)
+      .json({ ok: false, error: "Error al obtener colaboradores." });
+  }
+});
+
+/**
+ * PUT /api/collaborators/:id/activo
+ * Cambia el estado activo/inactivo de un colaborador.
+ * Si se intenta desactivar y tiene equipos ASIGNADOS, no se permite.
+ */
+router.put("/:id/activo", verifyAuth, async (req, res) => {
+  const id = parseInt(req.params.id, 10);
+  if (!id) {
+    return res.json({ ok: false, error: "ID de colaborador inválido." });
+  }
+
+  let { activo } = req.body;
+  // Normalizar a 0/1
+  if (typeof activo === "string") {
+    activo = activo === "true" || activo === "1" ? 1 : 0;
+  } else if (typeof activo === "boolean") {
+    activo = activo ? 1 : 0;
+  } else {
+    activo = Number(activo) ? 1 : 0;
+  }
+
+  try {
+    if (activo === 0) {
+      // 1) Traer nombre del colaborador
+      const [colabRows] = await pool.query(
+        "SELECT id, nombre FROM colaboradores WHERE id = ? LIMIT 1",
+        [id]
+      );
+      if (!colabRows.length) {
+        return res.json({ ok: false, error: "Colaborador no encontrado." });
+      }
+      const colab = colabRows[0];
+
+      // 2) Verificar activos ASIGNADOS
+      //    - ligados por colaborador_id
+      //    - o con solo colaborador_actual = nombre
+      const [pending] = await pool.query(
+        `
+        SELECT
+          a.id,
+          a.categoria,
+          a.nombre,
+          a.marca,
+          a.modelo,
+          a.serial_imei,
+          a.estado
+        FROM activos a
+        WHERE
+          a.estado = 'ASIGNADO'
+          AND (
+            a.colaborador_id = ?
+            OR (a.colaborador_id IS NULL AND a.colaborador_actual = ?)
+          )
+        ORDER BY a.id
+        `,
+        [id, colab.nombre]
+      );
+
+      if (pending.length > 0) {
+        return res.json({
+          ok: false,
+          reason: "PENDING_ASSETS",
+          message:
+            "No se puede dejar inactivo. Tiene equipos pendientes de devolución.",
+          assets: pending,
+        });
+      }
+    }
+
+    const [result] = await pool.query(
+      `UPDATE colaboradores SET activo = ? WHERE id = ?`,
+      [activo, id]
+    );
+
+    if (result.affectedRows === 0) {
+      return res.json({ ok: false, error: "Colaborador no encontrado." });
+    }
+
+    res.json({
+      ok: true,
+      activo,
+      message: `Colaborador marcado como ${activo ? "ACTIVO" : "INACTIVO"}.`,
+    });
+  } catch (err) {
+    console.error("[PUT /api/collaborators/:id/activo] Error:", err);
+    res.status(500).json({
+      ok: false,
+      error: "Error al actualizar estado del colaborador.",
+    });
   }
 });
 
@@ -246,22 +341,24 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
       SELECT
         a.id,
         a.categoria,
+        a.nombre,
         a.marca,
         a.modelo,
-        a.hostname,
-        a.nombre,
         a.serial_imei,
         a.estado,
-        a.colaborador_actual,
+        a.colaborador_id,
+        a.proyecto_id,
         a.parque_proyecto,
         a.usuario_login,
         a.fecha_asignacion,
         a.fecha_baja
       FROM activos a
-      WHERE a.colaborador_id = ?
+      WHERE
+        a.colaborador_id = ?
+        OR (a.colaborador_id IS NULL AND a.colaborador_actual = ?)
       ORDER BY a.id
       `,
-      [id]
+      [id, colaborador.nombre]
     );
 
     // 3) Historial de movimientos

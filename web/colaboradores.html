@@ -7,60 +7,141 @@
     <title>Colaboradores</title>
 
     <link rel="stylesheet" href="./lib/bootstrap.min.css">
+
+    <style>
+        :root {
+            --card-bg: #111827;
+            --card-border: #1f2937;
+            --card-border-active: #22d3ee;
+            --card-shadow: 0 18px 35px rgba(0, 0, 0, 0.55);
+            --pill-bg: linear-gradient(90deg, #06b6d4, #3b82f6);
+        }
+
+        body {
+            background-color: #020617;
+            color: #e5e7eb;
+        }
+
+        .card-colaborador {
+            background: radial-gradient(circle at top left, #1f2937 0, #020617 55%);
+            border-radius: 18px;
+            padding: 1rem 1.1rem;
+            border: 1px solid var(--card-border);
+            box-shadow: var(--card-shadow);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: .75rem;
+            height: 160px;
+            /* 👈 todas mismas altura */
+            transition:
+                transform .18s ease,
+                box-shadow .18s ease,
+                border-color .18s ease,
+                background .18s ease;
+            cursor: pointer;
+        }
+
+        .card-colaborador:hover {
+            transform: translateY(-3px) scale(1.01);
+            border-color: rgba(34, 211, 238, .75);
+            box-shadow: 0 22px 40px rgba(8, 47, 73, .9);
+            background: radial-gradient(circle at top left, #1e293b 0, #020617 60%);
+        }
+
+        .card-colaborador.is-selected {
+            border-color: var(--card-border-active);
+            box-shadow: 0 0 0 1px rgba(34, 211, 238, .85), var(--card-shadow);
+        }
+
+        .card-colaborador-name {
+            font-weight: 600;
+            font-size: .95rem;
+            line-height: 1.25rem;
+            margin-bottom: .25rem;
+            max-height: 3.75rem;
+            /* 3 líneas máximo */
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 3;
+            -webkit-box-orient: vertical;
+        }
+
+        .card-colaborador-subtitle {
+            font-size: .75rem;
+            color: #9ca3af;
+        }
+
+        .card-colaborador-footer {
+            margin-top: auto;
+            border-radius: 999px;
+            background: var(--pill-bg);
+            text-align: center;
+            padding: .35rem .5rem;
+            font-size: .75rem;
+            font-weight: 600;
+            color: #e5e7eb;
+            letter-spacing: .03em;
+            text-transform: uppercase;
+        }
+    </style>
+
 </head>
 
 <body>
 
-<nav class="navbar navbar-dark bg-dark px-3">
-    <span class="navbar-brand mb-0 h1">Colaboradores</span>
-    <small id="userInfo" class="text-light"></small>
-    <button id="btnLogout" class="btn btn-outline-light btn-sm">Salir</button>
-</nav>
+    <nav class="navbar navbar-dark bg-dark px-3">
+        <span class="navbar-brand mb-0 h1">Colaboradores</span>
+        <small id="userInfo" class="text-light"></small>
+        <button id="btnLogout" class="btn btn-outline-light btn-sm ms-3">Salir</button>
+    </nav>
 
-<div class="container py-4">
+    <div class="container py-4">
 
-    <div class="d-flex justify-content-between mb-3">
-        <h3>Listado de colaboradores</h3>
+        <div class="d-flex justify-content-between mb-3">
+            <h3>Listado de colaboradores</h3>
 
-        <div class="btn-group">
-            <button id="btnGroupProyectos" class="btn btn-info btn-sm active">Por Proyectos</button>
-            <button id="btnGroupEncargados" class="btn btn-outline-info btn-sm">Por Encargados</button>
+            <div class="btn-group">
+                <button id="btnGroupProyectos" class="btn btn-info btn-sm active">Por Proyectos</button>
+                <button id="btnGroupEncargados" class="btn btn-outline-info btn-sm">Por Encargados</button>
+            </div>
         </div>
+
+        <div id="cardsContainer" class="row g-3 mb-4"></div>
+
+        <section id="selectedInfo" class="d-none">
+            <h4 id="selectedTitle"></h4>
+            <p id="selectedSubtitle" class="text-secondary"></p>
+            <p id="selectedCount" class="fw-bold"></p>
+
+            <input id="txtSearch" class="form-control mb-3" placeholder="Buscar por nombre o RUT...">
+
+            <div class="table-responsive">
+                <table class="table table-dark table-hover align-middle">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Nombre</th>
+                            <th>RUT</th>
+                            <th>Cargo</th>
+                            <th>Proyecto</th>
+                            <th>Encargado</th>
+                            <th>Estado</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tablaColaboradoresBody"></tbody>
+                </table>
+            </div>
+
+            <div id="emptyMsg" class="text-center text-secondary d-none">No hay colaboradores para mostrar.</div>
+            <div id="errorMsg" class="text-danger text-center d-none">Error al cargar datos.</div>
+        </section>
     </div>
 
-    <div id="cardsContainer" class="row g-3 mb-4"></div>
-
-    <section id="selectedInfo" class="d-none">
-        <h4 id="selectedTitle"></h4>
-        <p id="selectedSubtitle" class="text-secondary"></p>
-        <p id="selectedCount" class="fw-bold"></p>
-
-        <input id="txtSearch" class="form-control mb-3" placeholder="Buscar por nombre o RUT...">
-
-        <div class="table-responsive">
-            <table class="table table-dark table-hover align-middle">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Nombre</th>
-                        <th>RUT</th>
-                        <th>Cargo</th>
-                        <th>Proyecto</th>
-                        <th>Encargado</th>
-                    </tr>
-                </thead>
-                <tbody id="tablaColaboradoresBody"></tbody>
-            </table>
-        </div>
-
-        <div id="emptyMsg" class="text-center text-secondary d-none">No hay colaboradores para mostrar.</div>
-        <div id="errorMsg" class="text-danger text-center d-none">Error al cargar datos.</div>
-    </section>
-</div>
-
-<script src="./lib/bootstrap.bundle.min.js"></script>
-<script type="module" src="./js/api.js"></script>
-<script type="module" src="./js/colaboradores.js"></script>
+    <script src="./lib/bootstrap.bundle.min.js"></script>
+    <script type="module" src="./js/api.js"></script>
+    <script type="module" src="./js/colaboradores.js"></script>
 
 </body>
+
 </html>

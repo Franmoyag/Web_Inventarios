@@ -70,27 +70,51 @@ async function loadSummary() {
 
 function renderCards() {
   cardsContainer.innerHTML = summaryItems
-    .map(
-      (i) => `
-    <div class="col-md-3">
-        <div class="card p-3 bg-dark text-light selectable" data-id="${i.id}">
-            <h5>${i.nombre}</h5>
-            <p class="text-secondary small">${i.ciudad ?? ""} ${i.region ?? ""}</p>
-            <span class="badge bg-info">${i.total_colaboradores} colaboradores</span>
+    .map((item) => {
+      const subtitle = currentGroup === "proyectos"
+        ? [item.ciudad, item.region].filter(Boolean).join(" • ")
+        : "Encargado";
+
+      const textoCantidad =
+        `${item.total_colaboradores} colaborador` +
+        (item.total_colaboradores === 1 ? "" : "es");
+
+      return `
+        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-3">
+          <div class="card-colaborador" data-id="${item.id}">
+            <div>
+              <p class="card-colaborador-name mb-1">
+                ${item.nombre}
+              </p>
+              <p class="card-colaborador-subtitle mb-0">
+                ${subtitle || "&nbsp;"}
+              </p>
+            </div>
+            <div class="card-colaborador-footer">
+              ${textoCantidad}
+            </div>
+          </div>
         </div>
-    </div>
-  `
-    )
+      `;
+    })
     .join("");
 }
 
-cardsContainer.addEventListener("click", (e) => {
-  const card = e.target.closest(".card");
-  if (!card) return;
-  selectedId = card.dataset.id;
 
+cardsContainer.addEventListener("click", (e) => {
+  const card = e.target.closest(".card-colaborador");
+  if (!card) return;
+
+  // marcar visualmente la seleccionada
+  $all(".card-colaborador", cardsContainer).forEach((c) =>
+    c.classList.remove("is-selected")
+  );
+  card.classList.add("is-selected");
+
+  selectedId = card.dataset.id;
   loadDetails();
 });
+
 
 async function loadDetails() {
   try {
@@ -99,7 +123,6 @@ async function loadDetails() {
         ? `?proyecto_id=${selectedId}`
         : `?encargado_id=${selectedId}`;
 
-    // 👇 ahora usa /api/collaborators/list
     const res = await api(`/api/collaborators/list${params}`);
     currentDetails = res.items || [];
 
@@ -129,17 +152,94 @@ function applyFilter() {
 
   tablaBody.innerHTML = rows
     .map(
-      (c) => `
-    <tr>
-      <td>${c.id}</td>
-      <td>${c.nombre}</td>
-      <td>${c.rut}</td>
-      <td>${c.cargo ?? ""}</td>
-      <td>${c.proyecto ?? ""}</td>
-      <td>${c.encargado ?? ""}</td>
-    </tr>`
+      (row) => `
+      <tr>
+        <td>${row.id}</td>
+        <td>${row.nombre}</td>
+        <td>${row.rut ?? ""}</td>
+        <td>${row.cargo ?? ""}</td>
+        <td>${row.proyecto ?? ""}</td>
+        <td>${row.encargado ?? ""}</td>
+        <td>
+          <div class="form-check form-switch">
+            <input 
+              class="form-check-input toggle-activo" 
+              type="checkbox" 
+              data-id="${row.id}"
+              ${row.activo ? "checked" : ""}>
+          </div>
+        </td>
+      </tr>
+    `
     )
     .join("");
 
   emptyMsg.classList.toggle("d-none", rows.length > 0);
+  selectedCountEl.textContent = `${rows.length} colaborador(es)`;
 }
+
+// Manejar cambio de switch ACTIVO/INACTIVO
+tablaBody.addEventListener("change", async (e) => {
+  const input = e.target.closest(".toggle-activo");
+  if (!input) return;
+
+  const id = input.dataset.id;
+  const nuevoEstado = input.checked; // true = activo, false = inactivo
+  const estadoAnterior = !nuevoEstado;
+
+  try {
+    const data = await api(`/api/collaborators/${id}/activo`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ activo: nuevoEstado }),
+    });
+
+    if (!data.ok) {
+      // Revertir visualmente
+      input.checked = estadoAnterior;
+
+      if (data.reason === "PENDING_ASSETS") {
+        // Armar mensaje con listado de equipos
+        const lista = (data.assets || [])
+          .map(
+            (a) =>
+              `• [ID ${a.id}] ${a.categoria ?? ""} ${a.marca ?? ""} ${a.modelo ?? ""} (${a.serial_imei ?? ""})`
+          )
+          .join("\n");
+
+        const msgBase =
+          data.message ||
+          "No se puede dejar inactivo. Tiene equipos pendientes de devolución.";
+
+        alert(
+          lista
+            ? msgBase + "\n\nEquipos pendientes:\n" + lista
+            : msgBase
+        );
+      } else {
+        showToast(data.error || "No se pudo actualizar el estado.", "danger");
+      }
+    } else {
+      showToast(
+        data.message ||
+          `Colaborador marcado como ${data.activo ? "ACTIVO" : "INACTIVO"}.`,
+        "success"
+      );
+
+      // Actualizar en currentDetails también
+      const col = currentDetails.find(
+        (c) => String(c.id) === String(id)
+      );
+      if (col) col.activo = data.activo;
+    }
+  } catch (err) {
+    console.error(err);
+    input.checked = estadoAnterior;
+    showToast(
+      err.message || "Error al cambiar estado del colaborador.",
+      "danger"
+    );
+  }
+});
