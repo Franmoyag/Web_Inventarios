@@ -332,8 +332,8 @@ async function abrirHistorialColaborador(id) {
                 <td>${[a.marca, a.modelo].filter(Boolean).join(" / ")}</td>
                 <td>${a.serial_imei ?? ""}</td>
                 <td>${a.estado ?? ""}</td>
-                <td>${a.fecha_asignacion ?? ""}</td>
-                <td>${a.fecha_baja ?? ""}</td>
+                <td>${formatearFecha(a.fecha_asignacion)}</td>
+                <td>${formatearFecha(a.fecha_baja)}</td>
               </tr>
             `
             )
@@ -355,7 +355,7 @@ async function abrirHistorialColaborador(id) {
 
               return `
               <tr>
-                <td>${m.fecha_hora ?? ""}</td>
+                <td>${formatearFecha(m.fecha_hora)}</td>
                 <td>${m.tipo ?? ""}</td>
                 <td>${equipo}</td>
                 <td>${m.serial_imei ?? ""}</td>
@@ -449,3 +449,16 @@ $("#btnGuardarColaborador").addEventListener("click", async () => {
     showToast("Error al guardar cambios", "danger");
   }
 });
+
+function formatearFecha(fechaISO) {
+  if (!fechaISO) return "";
+  const d = new Date(fechaISO);
+
+  // Día / Mes / Año con ceros a la izquierda
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const anio = d.getFullYear();
+
+  return `${dia}-${mes}-${anio}`;
+}
+
