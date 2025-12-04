@@ -203,6 +203,85 @@
     </div>
 
 
+    <!-- MODAL HISTORIAL COLABORADOR -->
+    <div class="modal fade" id="modalHistorialColaborador" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+            <div class="modal-content bg-dark text-light">
+
+                <div class="modal-header border-secondary">
+                    <div>
+                        <h5 class="modal-title">
+                            Historial de <span id="histNombre"></span>
+                        </h5>
+                        <div class="text-secondary small">
+                            RUT: <span id="histRut"></span> ·
+                            Cargo: <span id="histCargo"></span> ·
+                            Proyecto: <span id="histProyecto"></span> ·
+                            Estado: <span id="histEstado"></span>
+                        </div>
+                    </div>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <!-- ACTUALES -->
+                    <h6 class="mb-2">Equipos actualmente asociados</h6>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm table-dark table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Categoría</th>
+                                    <th>Nombre</th>
+                                    <th>Marca / Modelo</th>
+                                    <th>Serie / IMEI</th>
+                                    <th>Estado</th>
+                                    <th>Asignado</th>
+                                    <th>Baja</th>
+                                </tr>
+                            </thead>
+                            <tbody id="histActivosBody"></tbody>
+                        </table>
+                    </div>
+
+                    <hr class="border-secondary my-3">
+
+                    <!-- MOVIMIENTOS -->
+                    <h6 class="mb-2">Historial de movimientos</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-dark table-hover align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>Fecha / Hora</th>
+                                    <th>Tipo</th>
+                                    <th>Equipo</th>
+                                    <th>Serie / IMEI</th>
+                                    <th>Proyecto / Parque</th>
+                                    <th>Ubicación</th>
+                                    <th>Notas</th>
+                                </tr>
+                            </thead>
+                            <tbody id="histMovimientosBody"></tbody>
+                        </table>
+                    </div>
+
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+
+
+
+
+
+
     <script src="./lib/bootstrap.bundle.min.js"></script>
     <script type="module" src="./js/api.js"></script>
     <script type="module" src="./js/colaboradores.js"></script>

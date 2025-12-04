@@ -71,9 +71,10 @@ async function loadSummary() {
 function renderCards() {
   cardsContainer.innerHTML = summaryItems
     .map((item) => {
-      const subtitle = currentGroup === "proyectos"
-        ? [item.ciudad, item.region].filter(Boolean).join(" • ")
-        : "Encargado";
+      const subtitle =
+        currentGroup === "proyectos"
+          ? [item.ciudad, item.region].filter(Boolean).join(" • ")
+          : "Encargado";
 
       const textoCantidad =
         `${item.total_colaboradores} colaborador` +
@@ -100,7 +101,6 @@ function renderCards() {
     .join("");
 }
 
-
 cardsContainer.addEventListener("click", (e) => {
   const card = e.target.closest(".card-colaborador");
   if (!card) return;
@@ -115,7 +115,6 @@ cardsContainer.addEventListener("click", (e) => {
   loadDetails();
 });
 
-
 async function loadDetails() {
   try {
     const params =
@@ -127,7 +126,9 @@ async function loadDetails() {
     currentDetails = res.items || [];
 
     selectedInfoEl.classList.remove("d-none");
-    const selected = summaryItems.find((x) => String(x.id) === String(selectedId));
+    const selected = summaryItems.find(
+      (x) => String(x.id) === String(selectedId)
+    );
     selectedTitleEl.textContent = selected ? selected.nombre : "Detalle";
     selectedCountEl.textContent = `${currentDetails.length} colaboradores`;
 
@@ -170,9 +171,18 @@ function applyFilter() {
           </div>
         </td>
         <td>
-          <button class="btn btn-sm btn-outline-info btnEditarColaborador" data-id="${row.id}">
-            ✏️ Editar
-          </button>
+          <div class="btn-group btn-group-sm">
+            <button class="btn btn-outline-info btnEditarColaborador" data-id="${
+              row.id
+            }">
+              ✏️ Editar
+            </button>
+            <button class="btn btn-outline-secondary btnHistorialColaborador" data-id="${
+              row.id
+            }">
+              📄 Historial
+            </button>
+          </div>
         </td>
       </tr>
     `
@@ -210,7 +220,9 @@ tablaBody.addEventListener("change", async (e) => {
         const lista = (data.assets || [])
           .map(
             (a) =>
-              `• [ID ${a.id}] ${a.categoria ?? ""} ${a.marca ?? ""} ${a.modelo ?? ""} (${a.serial_imei ?? ""})`
+              `• [ID ${a.id}] ${a.categoria ?? ""} ${a.marca ?? ""} ${
+                a.modelo ?? ""
+              } (${a.serial_imei ?? ""})`
           )
           .join("\n");
 
@@ -218,11 +230,7 @@ tablaBody.addEventListener("change", async (e) => {
           data.message ||
           "No se puede dejar inactivo. Tiene equipos pendientes de devolución.";
 
-        alert(
-          lista
-            ? msgBase + "\n\nEquipos pendientes:\n" + lista
-            : msgBase
-        );
+        alert(lista ? msgBase + "\n\nEquipos pendientes:\n" + lista : msgBase);
       } else {
         showToast(data.error || "No se pudo actualizar el estado.", "danger");
       }
@@ -234,9 +242,7 @@ tablaBody.addEventListener("change", async (e) => {
       );
 
       // Actualizar en currentDetails también
-      const col = currentDetails.find(
-        (c) => String(c.id) === String(id)
-      );
+      const col = currentDetails.find((c) => String(c.id) === String(id));
       if (col) col.activo = data.activo;
     }
   } catch (err) {
@@ -249,42 +255,125 @@ tablaBody.addEventListener("change", async (e) => {
   }
 });
 
-
-// ABRIR MODAL EDITAR
+// CLICK EN ACCIONES (Editar / Historial)
 tablaBody.addEventListener("click", async (e) => {
-  const btn = e.target.closest(".btnEditarColaborador");
-  if (!btn) return;
+  const btnEditar = e.target.closest(".btnEditarColaborador");
+  const btnHist = e.target.closest(".btnHistorialColaborador");
 
-  const id = btn.dataset.id;
+  // EDITAR
+  if (btnEditar) {
+    const id = btnEditar.dataset.id;
 
-  try {
-    const data = await api(`/api/collaborators/${id}`);
-    if (!data.ok) {
-      showToast("No se pudieron obtener los datos del colaborador", "danger");
-      return;
+    try {
+      const res = await api(`/api/collaborators/${id}`);
+      if (!res.ok) {
+        showToast("No se pudo cargar el colaborador", "danger");
+        return;
+      }
+
+      const col = res.colaborador;
+
+      $("#editId").value = col.id;
+      $("#editNombre").value = col.nombre || "";
+      $("#editRUT").value = col.rut || "";
+      $("#editGenero").value = col.genero || "";
+
+      await cargarListasEditar(col);
+
+      const modalEdit = new bootstrap.Modal($("#modalEditarColaborador"));
+      modalEdit.show();
+    } catch (err) {
+      console.error(err);
+      showToast("Error al abrir editor", "danger");
     }
 
-    const col = data.colaborador;
+    return; // importante salir aquí
+  }
 
-    // Llenar campos
-    $("#editId").value = col.id;
-    $("#editNombre").value = col.nombre;
-    $("#editRUT").value = col.rut ?? "";
-    $("#editGenero").value = col.genero ?? "";
-
-    // Llenar selects dinámicos
-    await cargarListasEditar(col);
-
-    // Abrir modal
-    const modal = new bootstrap.Modal($("#modalEditarColaborador"));
-    modal.show();
-
-  } catch (err) {
-    showToast("Error al abrir editor", "danger");
+  // HISTORIAL
+  if (btnHist) {
+    const id = btnHist.dataset.id;
+    await abrirHistorialColaborador(id);
   }
 });
 
+async function abrirHistorialColaborador(id) {
+  try {
+    const res = await api(`/api/collaborators/${id}/history`);
 
+    if (!res.ok) {
+      showToast(res.error || "No se pudo obtener historial", "danger");
+      return;
+    }
+
+    const { colaborador, activosActuales, movimientos } = res;
+
+    // Cabecera
+    $("#histNombre").textContent = colaborador.nombre || "";
+    $("#histRut").textContent = colaborador.rut || "";
+    $("#histCargo").textContent = colaborador.cargo_nombre || "";
+    $("#histProyecto").textContent = colaborador.proyecto_nombre || "";
+
+    const estadoTxt = colaborador.activo ? "ACTIVO" : "INACTIVO";
+    $("#histEstado").textContent = estadoTxt;
+
+    // Activos actuales
+    const activos = activosActuales || [];
+    $("#histActivosBody").innerHTML =
+      activos.length === 0
+        ? `<tr><td colspan="8" class="text-center text-secondary small">Sin equipos asociados actualmente.</td></tr>`
+        : activos
+            .map(
+              (a) => `
+              <tr>
+                <td>${a.id}</td>
+                <td>${a.categoria ?? ""}</td>
+                <td>${a.nombre ?? ""}</td>
+                <td>${[a.marca, a.modelo].filter(Boolean).join(" / ")}</td>
+                <td>${a.serial_imei ?? ""}</td>
+                <td>${a.estado ?? ""}</td>
+                <td>${a.fecha_asignacion ?? ""}</td>
+                <td>${a.fecha_baja ?? ""}</td>
+              </tr>
+            `
+            )
+            .join("");
+
+    // Movimientos
+    const movs = movimientos || [];
+    $("#histMovimientosBody").innerHTML =
+      movs.length === 0
+        ? `<tr><td colspan="7" class="text-center text-secondary small">Sin movimientos registrados.</td></tr>`
+        : movs
+            .map((m) => {
+              const equipo = [m.categoria, m.marca, m.modelo]
+                .filter(Boolean)
+                .join(" / ");
+              const proyectoParque = [m.parque_proyecto]
+                .filter(Boolean)
+                .join(" ");
+
+              return `
+              <tr>
+                <td>${m.fecha_hora ?? ""}</td>
+                <td>${m.tipo ?? ""}</td>
+                <td>${equipo}</td>
+                <td>${m.serial_imei ?? ""}</td>
+                <td>${proyectoParque}</td>
+                <td>${m.ubicacion ?? ""}</td>
+                <td class="small">${m.notas ?? ""}</td>
+              </tr>
+            `;
+            })
+            .join("");
+
+    const modalHist = new bootstrap.Modal($("#modalHistorialColaborador"));
+    modalHist.show();
+  } catch (err) {
+    console.error(err);
+    showToast("Error al obtener historial", "danger");
+  }
+}
 
 async function cargarListasEditar(col) {
   // 1) CARGOS
@@ -292,9 +381,9 @@ async function cargarListasEditar(col) {
   $("#editCargo").innerHTML = (cargos.items || [])
     .map(
       (c) =>
-        `<option value="${c.id}" ${
-          c.id == col.cargo_id ? "selected" : ""
-        }>${c.nombre}</option>`
+        `<option value="${c.id}" ${c.id == col.cargo_id ? "selected" : ""}>${
+          c.nombre
+        }</option>`
     )
     .join("");
 
@@ -303,9 +392,9 @@ async function cargarListasEditar(col) {
   $("#editProyecto").innerHTML = (proyectos.items || [])
     .map(
       (p) =>
-        `<option value="${p.id}" ${
-          p.id == col.proyecto_id ? "selected" : ""
-        }>${p.nombre}</option>`
+        `<option value="${p.id}" ${p.id == col.proyecto_id ? "selected" : ""}>${
+          p.nombre
+        }</option>`
     )
     .join("");
 
@@ -324,10 +413,6 @@ async function cargarListasEditar(col) {
       )
       .join("");
 }
-
-
-
-
 
 $("#btnGuardarColaborador").addEventListener("click", async () => {
   const id = $("#editId").value;
@@ -360,7 +445,6 @@ $("#btnGuardarColaborador").addEventListener("click", async () => {
 
     // Recargar tabla
     loadDetails();
-
   } catch (err) {
     showToast("Error al guardar cambios", "danger");
   }
