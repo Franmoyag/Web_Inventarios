@@ -17,10 +17,36 @@ const btnGroupEncargados = $("#btnGroupEncargados");
 const userInfoEl = $("#userInfo");
 const btnLogout = $("#btnLogout");
 
+const viewHeader = $("#viewHeader");
+const btnBackToCards = $("#btnBackToCards");
+
 let currentGroup = "proyectos";
 let summaryItems = [];
 let currentDetails = [];
 let selectedId = null;
+
+
+function enterDetailMode() {
+  // Oculta el resumen (cards + header) y muestra solo la tabla
+  if (viewHeader) viewHeader.classList.add("d-none");
+  cardsContainer.classList.add("d-none");
+  selectedInfoEl.classList.remove("d-none");
+}
+
+function exitDetailMode() {
+  // Vuelve al resumen
+  if (viewHeader) viewHeader.classList.remove("d-none");
+  cardsContainer.classList.remove("d-none");
+  selectedInfoEl.classList.add("d-none");
+
+  // Opcional: desmarcar card seleccionada
+  if ($all) {
+    $all(".card-colaborador, .card", cardsContainer).forEach((c) =>
+      c.classList.remove("is-selected")
+    );
+  }
+}
+
 
 // SESIÓN
 (async () => {
@@ -45,12 +71,19 @@ btnGroupProyectos.addEventListener("click", () => setGroup("proyectos"));
 btnGroupEncargados.addEventListener("click", () => setGroup("encargados"));
 
 function setGroup(group) {
+  if (currentGroup === group) return;
+
   currentGroup = group;
   selectedId = null;
-  selectedInfoEl.classList.add("d-none");
+  currentDetails = [];
   txtSearch.value = "";
+
+  // Siempre volver al modo resumen
+  exitDetailMode();
+
   loadSummary();
 }
+
 
 async function loadSummary() {
   try {
@@ -125,12 +158,25 @@ async function loadDetails() {
     const res = await api(`/api/collaborators/list${params}`);
     currentDetails = res.items || [];
 
-    selectedInfoEl.classList.remove("d-none");
     const selected = summaryItems.find(
       (x) => String(x.id) === String(selectedId)
     );
-    selectedTitleEl.textContent = selected ? selected.nombre : "Detalle";
-    selectedCountEl.textContent = `${currentDetails.length} colaboradores`;
+
+    if (selected) {
+      selectedTitleEl.textContent = selected.nombre || "";
+      selectedSubtitleEl.textContent =
+        currentGroup === "proyectos"
+          ? [selected.ciudad, selected.region].filter(Boolean).join(" • ")
+          : "Encargado";
+    } else {
+      selectedTitleEl.textContent = "Detalle";
+      selectedSubtitleEl.textContent = "";
+    }
+
+    selectedCountEl.textContent = `${currentDetails.length} colaborador(es)`;
+
+    // 👇 aquí activamos el modo tabla
+    enterDetailMode();
 
     applyFilter();
   } catch (err) {
@@ -139,6 +185,7 @@ async function loadDetails() {
     errorMsg.classList.remove("d-none");
   }
 }
+
 
 txtSearch.addEventListener("input", applyFilter);
 
@@ -462,3 +509,90 @@ function formatearFecha(fechaISO) {
   return `${dia}-${mes}-${anio}`;
 }
 
+if (btnBackToCards) {
+  btnBackToCards.addEventListener("click", () => {
+    // Limpiar selección de tabla si quieres
+    selectedId = null;
+    currentDetails = [];
+    tablaBody.innerHTML = "";
+    txtSearch.value = "";
+
+    exitDetailMode();
+  });
+}
+
+
+const btnNuevoColaborador = $("#btnNuevoColaborador");
+
+btnNuevoColaborador.addEventListener("click", async () => {
+  // Limpiar campos
+  $("#newNombre").value = "";
+  $("#newRUT").value = "";
+  $("#newGenero").value = "";
+
+  // Cargar listas
+  await cargarListasNuevo();
+
+  // Abrir modal
+  const modal = new bootstrap.Modal($("#modalNuevoColaborador"));
+  modal.show();
+});
+
+async function cargarListasNuevo() {
+  // CARGOS
+  const cargos = await api("/api/collaborators/cargos");
+  $("#newCargo").innerHTML = cargos.items
+    .map(c => `<option value="${c.id}">${c.nombre}</option>`)
+    .join("");
+
+  // PROYECTOS
+  const proyectos = await api("/api/collaborators/proyectos");
+  $("#newProyecto").innerHTML = proyectos.items
+    .map(p => `<option value="${p.id}">${p.nombre}</option>`)
+    .join("");
+
+  // ENCARGADOS
+  const resEncargados = await api("/api/collaborators/encargados");
+  $("#newEncargado").innerHTML =
+    `<option value="">(Ninguno)</option>` +
+    resEncargados.items
+      .map(e => `<option value="${e.id}">${e.nombre}</option>`)
+      .join("");
+}
+
+$("#btnGuardarNuevoColaborador").addEventListener("click", async () => {
+  const payload = {
+    nombre: $("#newNombre").value.trim(),
+    rut: $("#newRUT").value.trim(),
+    cargo_id: $("#newCargo").value,
+    proyecto_id: $("#newProyecto").value,
+    encargado_id: $("#newEncargado").value || null,
+    genero: $("#newGenero").value || null,
+  };
+
+  try {
+    const res = await api("/api/collaborators", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!res.ok) {
+      showToast(res.error || "No se pudo crear el colaborador", "danger");
+      return;
+    }
+
+    showToast("Colaborador creado correctamente", "success");
+
+    // Cerrar modal
+    bootstrap.Modal.getInstance($("#modalNuevoColaborador")).hide();
+
+    // Volver a resumen y recargar
+    exitDetailMode();
+    loadSummary();
+
+  } catch (err) {
+    console.error(err);
+    showToast("Error al guardar colaborador", "danger");
+  }
+});

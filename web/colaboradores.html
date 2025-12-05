@@ -98,21 +98,34 @@
 
     <div class="container py-4">
 
-        <div class="d-flex justify-content-between mb-3">
-            <h3>Listado de colaboradores</h3>
+        <div id="viewHeader" class="d-flex justify-content-between align-items-center mb-3">
+            <h3 class="mb-0">Listado de colaboradores</h3>
 
-            <div class="btn-group">
+            <div class="d-flex gap-2">
                 <button id="btnGroupProyectos" class="btn btn-info btn-sm active">Por Proyectos</button>
                 <button id="btnGroupEncargados" class="btn btn-outline-info btn-sm">Por Encargados</button>
+
+                <button id="btnNuevoColaborador" class="btn btn-success btn-sm">
+                    + Agregar
+                </button>
             </div>
         </div>
+
 
         <div id="cardsContainer" class="row g-3 mb-4"></div>
 
         <section id="selectedInfo" class="d-none">
-            <h4 id="selectedTitle"></h4>
-            <p id="selectedSubtitle" class="text-secondary"></p>
-            <p id="selectedCount" class="fw-bold"></p>
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <div>
+                    <h4 id="selectedTitle" class="mb-1"></h4>
+                    <p id="selectedSubtitle" class="text-secondary small mb-1"></p>
+                    <p id="selectedCount" class="fw-bold mb-0"></p>
+                </div>
+
+                <button id="btnBackToCards" class="btn btn-outline-light btn-sm">
+                    ← Volver al resumen
+                </button>
+            </div>
 
             <input id="txtSearch" class="form-control mb-3" placeholder="Buscar por nombre o RUT...">
 
@@ -137,6 +150,7 @@
             <div id="emptyMsg" class="text-center text-secondary d-none">No hay colaboradores para mostrar.</div>
             <div id="errorMsg" class="text-danger text-center d-none">Error al cargar datos.</div>
         </section>
+
     </div>
 
 
@@ -201,6 +215,69 @@
             </div>
         </div>
     </div>
+
+
+    <!-- MODAL NUEVO COLABORADOR -->
+    <div class="modal fade" id="modalNuevoColaborador" tabindex="-1">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+            <div class="modal-content bg-dark text-light">
+
+                <div class="modal-header border-secondary">
+                    <h5 class="modal-title">Agregar Nuevo Colaborador</h5>
+                    <button class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+
+                <div class="modal-body">
+
+                    <form id="formNuevoColaborador" class="row g-3">
+
+                        <div class="col-md-6">
+                            <label class="form-label">Nombre</label>
+                            <input class="form-control" id="newNombre" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">RUT</label>
+                            <input class="form-control" id="newRUT" required>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Cargo</label>
+                            <select class="form-select" id="newCargo" required></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Proyecto</label>
+                            <select class="form-select" id="newProyecto" required></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Encargado</label>
+                            <select class="form-select" id="newEncargado"></select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">Género</label>
+                            <select class="form-select" id="newGenero">
+                                <option value="">Sin especificar</option>
+                                <option value="HOMBRE">HOMBRE</option>
+                                <option value="MUJER">MUJER</option>
+                            </select>
+                        </div>
+
+                    </form>
+
+                </div>
+
+                <div class="modal-footer border-secondary">
+                    <button class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button class="btn btn-success" id="btnGuardarNuevoColaborador">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
 
 
     <!-- MODAL HISTORIAL COLABORADOR -->

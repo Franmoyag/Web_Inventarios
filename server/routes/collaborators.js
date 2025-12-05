@@ -459,6 +459,31 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
 });
 
 
+// CREAR NUEVO COLABORADOR
+router.post("/", verifyAuth, async (req, res) => {
+  try {
+    const { nombre, rut, genero, cargo_id, proyecto_id, encargado_id } = req.body;
+
+    await pool.query(
+      `
+      INSERT INTO colaboradores (nombre, rut, genero, cargo_id, proyecto_id, encargado_id, activo)
+      VALUES (?, ?, ?, ?, ?, ?, 1)
+      `,
+      [nombre, rut, genero, cargo_id, proyecto_id, encargado_id]
+    );
+
+    res.json({ ok: true, message: "Colaborador creado" });
+
+  } catch (err) {
+    console.error(err);
+    res.json({ ok: false, error: "Error al crear colaborador" });
+  }
+});
+
+
+
+
+
 /**
  * GET /api/collaborators/:id
  * Obtener datos del colaborador
