@@ -5,9 +5,51 @@ import { verifyAuth } from "../middleware/auth.js";
 
 const router = Router();
 
+/* ========== HELPERS RUT CHILENO ========== */
+
+function limpiarRut(rut) {
+  if (!rut) return "";
+  return rut.replace(/[^0-9kK]/g, "").toUpperCase();
+}
+
+function esRutGenerico(rut) {
+  const limpio = limpiarRut(rut);
+  // 11.111.111-1 -> 111111111
+  return limpio === "111111111";
+}
+
+function validarRutChileno(rut) {
+  if (!rut) return false;
+
+  const limpio = limpiarRut(rut);
+  // 7-8 dígitos + DV (0-9 o K)
+  if (!/^\d{7,8}[0-9K]$/.test(limpio)) return false;
+
+  const cuerpo = limpio.slice(0, -1);
+  const dvRecibido = limpio.slice(-1);
+
+  let suma = 0;
+  let multiplicador = 2;
+
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += parseInt(cuerpo[i], 10) * multiplicador;
+    multiplicador = multiplicador === 7 ? 2 : multiplicador + 1;
+  }
+
+  const resto = suma % 11;
+  const dvCalculadoNum = 11 - resto;
+
+  let dvCalculado;
+  if (dvCalculadoNum === 11) dvCalculado = "0";
+  else if (dvCalculadoNum === 10) dvCalculado = "K";
+  else dvCalculado = String(dvCalculadoNum);
+
+  return dvRecibido === dvCalculado;
+}
+
 /**
  * GET /api/collaborators?q=texto
- * Autocomplete rápido (lo usas en otros lados, input de búsqueda simple)
+ * Autocomplete rápido
  */
 router.get("/", verifyAuth, async (req, res) => {
   const q = (req.query.q || "").trim();
@@ -47,7 +89,7 @@ router.get("/", verifyAuth, async (req, res) => {
 
 /**
  * GET /api/collaborators/search?q=texto
- * Búsqueda de colaboradores para la página de actas (retorna { ok, items })
+ * Búsqueda para actas (retorna { ok, items })
  */
 router.get("/search", verifyAuth, async (req, res) => {
   const q = (req.query.q || "").trim();
@@ -142,12 +184,8 @@ router.get("/encargados", verifyAuth, async (req, res) => {
   }
 });
 
+/* Listas simples para selects */
 
-
-
-
-
-// ���� NUEVO: lista simple de cargos
 router.get("/cargos", verifyAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -167,7 +205,6 @@ router.get("/cargos", verifyAuth, async (req, res) => {
   }
 });
 
-// ���� NUEVO: lista simple de proyectos
 router.get("/proyectos", verifyAuth, async (req, res) => {
   try {
     const [rows] = await pool.query(
@@ -187,19 +224,9 @@ router.get("/proyectos", verifyAuth, async (req, res) => {
   }
 });
 
-
-
-
-
-
-
-
-
 /**
  * GET /api/collaborators/list
- * Detalle de colaboradores filtrado por proyecto o encargado
- *    ?proyecto_id=ID  OR  ?encargado_id=ID
- *    ?q=texto (opcional: nombre / RUT)
+ * Detalle de colaboradores por proyecto o encargado
  */
 router.get("/list", verifyAuth, async (req, res) => {
   try {
@@ -265,8 +292,7 @@ router.get("/list", verifyAuth, async (req, res) => {
 
 /**
  * PUT /api/collaborators/:id/activo
- * Cambia el estado activo/inactivo de un colaborador.
- * Si se intenta desactivar y tiene equipos ASIGNADOS, no se permite.
+ * Cambia el estado activo/inactivo con validación de equipos pendientes
  */
 router.put("/:id/activo", verifyAuth, async (req, res) => {
   const id = parseInt(req.params.id, 10);
@@ -275,7 +301,6 @@ router.put("/:id/activo", verifyAuth, async (req, res) => {
   }
 
   let { activo } = req.body;
-  // Normalizar a 0/1
   if (typeof activo === "string") {
     activo = activo === "true" || activo === "1" ? 1 : 0;
   } else if (typeof activo === "boolean") {
@@ -286,7 +311,6 @@ router.put("/:id/activo", verifyAuth, async (req, res) => {
 
   try {
     if (activo === 0) {
-      // 1) Traer nombre del colaborador
       const [colabRows] = await pool.query(
         "SELECT id, nombre FROM colaboradores WHERE id = ? LIMIT 1",
         [id]
@@ -296,9 +320,6 @@ router.put("/:id/activo", verifyAuth, async (req, res) => {
       }
       const colab = colabRows[0];
 
-      // 2) Verificar activos ASIGNADOS
-      //    - ligados por colaborador_id
-      //    - o con solo colaborador_actual = nombre
       const [pending] = await pool.query(
         `
         SELECT
@@ -366,7 +387,6 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
   }
 
   try {
-    // 1) Datos del colaborador
     const [colabRows] = await pool.query(
       `
       SELECT 
@@ -388,7 +408,6 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
 
     const colaborador = colabRows[0];
 
-    // 2) Activos actuales
     const [activosActuales] = await pool.query(
       `
       SELECT
@@ -414,7 +433,6 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
       [id, colaborador.nombre]
     );
 
-    // 3) Historial de movimientos
     const [movimientos] = await pool.query(
       `
       SELECT
@@ -458,11 +476,39 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
   }
 });
 
+/* ========== CREAR / OBTENER / ACTUALIZAR ========== */
 
 // CREAR NUEVO COLABORADOR
 router.post("/", verifyAuth, async (req, res) => {
   try {
     const { nombre, rut, genero, cargo_id, proyecto_id, encargado_id } = req.body;
+
+    if (!rut || rut.trim() === "") {
+      return res.json({ ok: false, error: "El RUT es obligatorio." });
+    }
+
+    if (!esRutGenerico(rut) && !validarRutChileno(rut)) {
+      return res.json({
+        ok: false,
+        error: "El RUT ingresado no es un RUT chileno válido.",
+      });
+    }
+
+    const rutGenerico = "11.111.111-1";
+
+    if (rut !== rutGenerico) {
+      const [existe] = await pool.query(
+        "SELECT id FROM colaboradores WHERE rut = ? LIMIT 1",
+        [rut]
+      );
+
+      if (existe.length > 0) {
+        return res.json({
+          ok: false,
+          error: "Este RUT ya existe. Debe ingresar otro.",
+        });
+      }
+    }
 
     await pool.query(
       `
@@ -473,53 +519,76 @@ router.post("/", verifyAuth, async (req, res) => {
     );
 
     res.json({ ok: true, message: "Colaborador creado" });
-
   } catch (err) {
-    console.error(err);
+    console.error("[POST /api/collaborators] Error:", err);
     res.json({ ok: false, error: "Error al crear colaborador" });
   }
 });
 
-
-
-
-
 /**
  * GET /api/collaborators/:id
- * Obtener datos del colaborador
  */
 router.get("/:id", verifyAuth, async (req, res) => {
   try {
     const id = req.params.id;
 
-    const [rows] = await pool.query(`
+    const [rows] = await pool.query(
+      `
       SELECT *
       FROM colaboradores
       WHERE id = ?
       LIMIT 1
-    `, [id]);
+      `,
+      [id]
+    );
 
     if (!rows.length)
       return res.json({ ok: false, error: "Colaborador no encontrado" });
 
     res.json({ ok: true, colaborador: rows[0] });
-
   } catch (err) {
+    console.error("[GET /api/collaborators/:id] Error:", err);
     res.json({ ok: false, error: "Error al obtener colaborador" });
   }
 });
 
-
 /**
  * PUT /api/collaborators/:id
- * Actualizar datos del colaborador
  */
 router.put("/:id", verifyAuth, async (req, res) => {
   try {
     const id = req.params.id;
     const { nombre, rut, genero, cargo_id, proyecto_id, encargado_id } = req.body;
 
-    await pool.query(`
+    if (!rut || rut.trim() === "") {
+      return res.json({ ok: false, error: "El RUT es obligatorio." });
+    }
+
+    if (!esRutGenerico(rut) && !validarRutChileno(rut)) {
+      return res.json({
+        ok: false,
+        error: "El RUT ingresado no es un RUT chileno válido.",
+      });
+    }
+
+    const rutGenerico = "11.111.111-1";
+
+    if (rut !== rutGenerico) {
+      const [existe] = await pool.query(
+        "SELECT id FROM colaboradores WHERE rut = ? AND id <> ? LIMIT 1",
+        [rut, id]
+      );
+
+      if (existe.length > 0) {
+        return res.json({
+          ok: false,
+          error: "Este RUT ya existe. Debe ingresar otro.",
+        });
+      }
+    }
+
+    await pool.query(
+      `
       UPDATE colaboradores SET
         nombre = ?,
         rut = ?,
@@ -528,18 +597,15 @@ router.put("/:id", verifyAuth, async (req, res) => {
         proyecto_id = ?,
         encargado_id = ?
       WHERE id = ?
-    `, [nombre, rut, genero, cargo_id, proyecto_id, encargado_id, id]);
+      `,
+      [nombre, rut, genero, cargo_id, proyecto_id, encargado_id, id]
+    );
 
     res.json({ ok: true });
-
   } catch (err) {
-    console.error(err);
+    console.error("[PUT /api/collaborators/:id] Error:", err);
     res.json({ ok: false, error: "Error al actualizar colaborador" });
   }
 });
-
-
-
-
 
 export default router;

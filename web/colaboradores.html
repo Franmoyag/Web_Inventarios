@@ -84,6 +84,37 @@
             letter-spacing: .03em;
             text-transform: uppercase;
         }
+
+        /* --- TABLA COMPACTA --- */
+        #selectedInfo table {
+            font-size: 0.82rem;
+            /* más pequeño sin ser ilegible */
+        }
+
+        #selectedInfo table th {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: .3px;
+        }
+
+        #selectedInfo table td {
+            padding-top: 4px !important;
+            padding-bottom: 4px !important;
+            vertical-align: middle;
+        }
+
+        /* Botones de acciones más compactos */
+        .btn-action-sm {
+            padding: 2px 6px !important;
+            font-size: 0.70rem !important;
+            line-height: 1 !important;
+        }
+
+        /* Ícono de advertencia pequeño */
+        .rut-warning {
+            font-size: 0.75rem;
+            vertical-align: middle;
+        }
     </style>
 
 </head>
@@ -355,6 +386,17 @@
 
 
 
+
+    <!-- Toast base que usa showToast() -->
+    <div id="appToast" class="toast position-fixed bottom-0 end-0 m-3 p-2" role="alert" aria-live="assertive"
+        aria-atomic="true">
+        <div class="d-flex">
+            <div id="toastMsg" class="toast-body">
+                <!-- mensaje dinámico -->
+            </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+        </div>
+    </div>
 
 
 

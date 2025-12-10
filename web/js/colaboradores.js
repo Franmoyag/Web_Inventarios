@@ -1,3 +1,4 @@
+// web/js/colaboradores.js
 import { api, $, $all, showToast } from "./api.js";
 
 const cardsContainer = $("#cardsContainer");
@@ -20,26 +21,152 @@ const btnLogout = $("#btnLogout");
 const viewHeader = $("#viewHeader");
 const btnBackToCards = $("#btnBackToCards");
 
+const btnNuevoColaborador = $("#btnNuevoColaborador");
+
 let currentGroup = "proyectos";
 let summaryItems = [];
 let currentDetails = [];
 let selectedId = null;
 
+/* ========== HELPERS RUT Y FECHAS ========== */
+function formatearRut(rut) {
+  rut = limpiarRut(rut); // deja solo números y K
+  if (!rut) return "";
+
+  // 1 o 2 dígitos: sin formato
+  if (rut.length <= 2) {
+    return rut;
+  }
+
+  let cuerpo;
+  let dv = null;
+
+  if (rut.length <= 8) {
+    // Todavía está escribiendo el cuerpo del RUT (sin DV)
+    cuerpo = rut;
+  } else {
+    // 7-8 dígitos de cuerpo + 1 DV
+    cuerpo = rut.slice(0, -1);
+    dv = rut.slice(-1);
+  }
+
+  // Insertar puntos cada 3 dígitos desde el final
+  cuerpo = cuerpo.replace(/\B(?=(\d{3})+(?!\d))/g, ".");
+
+  // Si aún no hay DV, sólo mostramos el cuerpo con puntos
+  return dv ? `${cuerpo}-${dv}` : cuerpo;
+}
+
+
+
+// Inputs de RUT que deben autoformatearse
+const inputsRut = ["#editRUT", "#newRUT"];
+
+inputsRut.forEach((selector) => {
+  const input = document.querySelector(selector);
+  if (!input) return;
+
+  // Re-formatear SIEMPRE y llevar el cursor al final
+  input.addEventListener("input", () => {
+    const formatted = formatearRut(input.value);
+    input.value = formatted;
+    // cursor siempre al final para evitar saltos raros
+    const len = input.value.length;
+    input.setSelectionRange(len, len);
+  });
+
+  // Sólo permitir números, K/k y teclas de control (no dejar escribir . ni -)
+  input.addEventListener("keydown", (e) => {
+    const controlKeys = [
+      "Backspace",
+      "Delete",
+      "ArrowLeft",
+      "ArrowRight",
+      "Tab",
+      "Home",
+      "End",
+    ];
+
+    if (controlKeys.includes(e.key)) return; // OK
+
+    // Tecla normal (1 carácter)
+    if (e.key.length === 1) {
+      if (!/[0-9kK]/.test(e.key)) {
+        e.preventDefault();
+      }
+      return;
+    }
+
+    // Cualquier otra tecla especial, la dejamos pasar (por si acaso)
+  });
+});
+
+
+const RUT_GENERICO_ORIGINAL = "11.111.111-1";
+
+function limpiarRut(rut) {
+  if (!rut) return "";
+  return rut.replace(/[^0-9kK]/g, "").toUpperCase();
+}
+
+function esRutGenerico(rut) {
+  if (!rut) return false;
+  const limpio = limpiarRut(rut);
+  return limpio === "111111111"; // 11.111.111-1
+}
+
+function validarRutChileno(rut) {
+  if (!rut) return false;
+
+  const limpio = limpiarRut(rut);
+  if (!/^\d{7,8}[0-9K]$/.test(limpio)) return false;
+
+  const cuerpo = limpio.slice(0, -1);
+  const dvRecibido = limpio.slice(-1);
+
+  let suma = 0;
+  let multiplicador = 2;
+
+  for (let i = cuerpo.length - 1; i >= 0; i--) {
+    suma += parseInt(cuerpo[i], 10) * multiplicador;
+    multiplicador = multiplicador === 7 ? 2 : multiplicador + 1;
+  }
+
+  const resto = suma % 11;
+  const dvCalculadoNum = 11 - resto;
+
+  let dvCalculado;
+  if (dvCalculadoNum === 11) dvCalculado = "0";
+  else if (dvCalculadoNum === 10) dvCalculado = "K";
+  else dvCalculado = String(dvCalculadoNum);
+
+  return dvRecibido === dvCalculado;
+}
+
+function formatearFecha(fechaISO) {
+  if (!fechaISO) return "";
+  const d = new Date(fechaISO);
+
+  const dia = String(d.getDate()).padStart(2, "0");
+  const mes = String(d.getMonth() + 1).padStart(2, "0");
+  const anio = d.getFullYear();
+
+  return `${dia}-${mes}-${anio}`;
+}
+
+/* ========== MODO RESUMEN / DETALLE ========== */
 
 function enterDetailMode() {
-  // Oculta el resumen (cards + header) y muestra solo la tabla
   if (viewHeader) viewHeader.classList.add("d-none");
   cardsContainer.classList.add("d-none");
   selectedInfoEl.classList.remove("d-none");
 }
 
 function exitDetailMode() {
-  // Vuelve al resumen
   if (viewHeader) viewHeader.classList.remove("d-none");
   cardsContainer.classList.remove("d-none");
   selectedInfoEl.classList.add("d-none");
 
-  // Opcional: desmarcar card seleccionada
   if ($all) {
     $all(".card-colaborador, .card", cardsContainer).forEach((c) =>
       c.classList.remove("is-selected")
@@ -47,8 +174,8 @@ function exitDetailMode() {
   }
 }
 
+/* ========== SESIÓN ========== */
 
-// SESIÓN
 (async () => {
   try {
     const me = await api("/api/auth/me");
@@ -63,10 +190,10 @@ btnLogout.addEventListener("click", async () => {
   location.href = "/login.html";
 });
 
-// CARGA INICIAL
+/* ========== CARGA INICIAL ========== */
+
 document.addEventListener("DOMContentLoaded", () => loadSummary());
 
-// CAMBIO DE AGRUPACIÓN
 btnGroupProyectos.addEventListener("click", () => setGroup("proyectos"));
 btnGroupEncargados.addEventListener("click", () => setGroup("encargados"));
 
@@ -78,12 +205,11 @@ function setGroup(group) {
   currentDetails = [];
   txtSearch.value = "";
 
-  // Siempre volver al modo resumen
   exitDetailMode();
-
   loadSummary();
 }
 
+/* ========== RESUMEN (CARDS) ========== */
 
 async function loadSummary() {
   try {
@@ -138,7 +264,6 @@ cardsContainer.addEventListener("click", (e) => {
   const card = e.target.closest(".card-colaborador");
   if (!card) return;
 
-  // marcar visualmente la seleccionada
   $all(".card-colaborador", cardsContainer).forEach((c) =>
     c.classList.remove("is-selected")
   );
@@ -147,6 +272,8 @@ cardsContainer.addEventListener("click", (e) => {
   selectedId = card.dataset.id;
   loadDetails();
 });
+
+/* ========== DETALLE (TABLA) ========== */
 
 async function loadDetails() {
   try {
@@ -175,9 +302,7 @@ async function loadDetails() {
 
     selectedCountEl.textContent = `${currentDetails.length} colaborador(es)`;
 
-    // 👇 aquí activamos el modo tabla
     enterDetailMode();
-
     applyFilter();
   } catch (err) {
     console.error(err);
@@ -185,7 +310,6 @@ async function loadDetails() {
     errorMsg.classList.remove("d-none");
   }
 }
-
 
 txtSearch.addEventListener("input", applyFilter);
 
@@ -204,7 +328,22 @@ function applyFilter() {
       <tr>
         <td>${row.id}</td>
         <td>${row.nombre}</td>
-        <td>${row.rut ?? ""}</td>
+        <td>
+          ${row.rut ?? ""}
+          ${
+            esRutGenerico(row.rut)
+              ? `
+                <span 
+                  class="ms-1 text-warning rut-warning" 
+                  data-bs-toggle="tooltip" 
+                  data-bs-placement="top"
+                  data-bs-title="RUT genérico: ingresar RUT real.">
+                  ⚠️
+                </span>
+                `
+              : ""
+          }
+        </td>
         <td>${row.cargo ?? ""}</td>
         <td>${row.proyecto ?? ""}</td>
         <td>${row.encargado ?? ""}</td>
@@ -219,15 +358,15 @@ function applyFilter() {
         </td>
         <td>
           <div class="btn-group btn-group-sm">
-            <button class="btn btn-outline-info btnEditarColaborador" data-id="${
+            <button class="btn btn-outline-info btn-action-sm btnEditarColaborador" data-id="${
               row.id
             }">
-              ✏️ Editar
+              ✏️
             </button>
-            <button class="btn btn-outline-secondary btnHistorialColaborador" data-id="${
+            <button class="btn btn-outline-secondary btn-action-sm btnHistorialColaborador" data-id="${
               row.id
             }">
-              📄 Historial
+              📄
             </button>
           </div>
         </td>
@@ -236,17 +375,25 @@ function applyFilter() {
     )
     .join("");
 
+  const tooltipTriggerList = [].slice.call(
+    document.querySelectorAll('[data-bs-toggle="tooltip"]')
+  );
+  tooltipTriggerList.forEach((el) => {
+    new bootstrap.Tooltip(el);
+  });
+
   emptyMsg.classList.toggle("d-none", rows.length > 0);
   selectedCountEl.textContent = `${rows.length} colaborador(es)`;
 }
 
-// Manejar cambio de switch ACTIVO/INACTIVO
+/* ========== CAMBIO ACTIVO/INACTIVO ========== */
+
 tablaBody.addEventListener("change", async (e) => {
   const input = e.target.closest(".toggle-activo");
   if (!input) return;
 
   const id = input.dataset.id;
-  const nuevoEstado = input.checked; // true = activo, false = inactivo
+  const nuevoEstado = input.checked;
   const estadoAnterior = !nuevoEstado;
 
   try {
@@ -259,11 +406,9 @@ tablaBody.addEventListener("change", async (e) => {
     });
 
     if (!data.ok) {
-      // Revertir visualmente
       input.checked = estadoAnterior;
 
       if (data.reason === "PENDING_ASSETS") {
-        // Armar mensaje con listado de equipos
         const lista = (data.assets || [])
           .map(
             (a) =>
@@ -288,7 +433,6 @@ tablaBody.addEventListener("change", async (e) => {
         "success"
       );
 
-      // Actualizar en currentDetails también
       const col = currentDetails.find((c) => String(c.id) === String(id));
       if (col) col.activo = data.activo;
     }
@@ -302,12 +446,12 @@ tablaBody.addEventListener("change", async (e) => {
   }
 });
 
-// CLICK EN ACCIONES (Editar / Historial)
+/* ========== EDITAR / HISTORIAL ========== */
+
 tablaBody.addEventListener("click", async (e) => {
   const btnEditar = e.target.closest(".btnEditarColaborador");
   const btnHist = e.target.closest(".btnHistorialColaborador");
 
-  // EDITAR
   if (btnEditar) {
     const id = btnEditar.dataset.id;
 
@@ -320,9 +464,16 @@ tablaBody.addEventListener("click", async (e) => {
 
       const col = res.colaborador;
 
+      if (esRutGenerico(col.rut)) {
+        showToast(
+          "Este colaborador tiene un RUT genérico. Debe actualizarlo.",
+          "warning"
+        );
+      }
+
       $("#editId").value = col.id;
       $("#editNombre").value = col.nombre || "";
-      $("#editRUT").value = col.rut || "";
+      $("#editRUT").value = col.rut ? formatearRut(col.rut) : "";
       $("#editGenero").value = col.genero || "";
 
       await cargarListasEditar(col);
@@ -334,10 +485,9 @@ tablaBody.addEventListener("click", async (e) => {
       showToast("Error al abrir editor", "danger");
     }
 
-    return; // importante salir aquí
+    return;
   }
 
-  // HISTORIAL
   if (btnHist) {
     const id = btnHist.dataset.id;
     await abrirHistorialColaborador(id);
@@ -355,16 +505,25 @@ async function abrirHistorialColaborador(id) {
 
     const { colaborador, activosActuales, movimientos } = res;
 
-    // Cabecera
     $("#histNombre").textContent = colaborador.nombre || "";
     $("#histRut").textContent = colaborador.rut || "";
     $("#histCargo").textContent = colaborador.cargo_nombre || "";
     $("#histProyecto").textContent = colaborador.proyecto_nombre || "";
 
+    if (esRutGenerico(colaborador.rut)) {
+      $("#histRut").innerHTML += `
+        <span
+          class="ms-1 text-warning rut-warning"
+          data-bs-toggle="tooltip"
+          data-bs-placement="top"
+          data-bs-title="RUT genérico: ingresar RUT real.">
+          ⚠️
+        </span>`;
+    }
+
     const estadoTxt = colaborador.activo ? "ACTIVO" : "INACTIVO";
     $("#histEstado").textContent = estadoTxt;
 
-    // Activos actuales
     const activos = activosActuales || [];
     $("#histActivosBody").innerHTML =
       activos.length === 0
@@ -386,7 +545,6 @@ async function abrirHistorialColaborador(id) {
             )
             .join("");
 
-    // Movimientos
     const movs = movimientos || [];
     $("#histMovimientosBody").innerHTML =
       movs.length === 0
@@ -414,6 +572,15 @@ async function abrirHistorialColaborador(id) {
             })
             .join("");
 
+    const tooltipTriggerList = [].slice.call(
+      document.querySelectorAll(
+        '#modalHistorialColaborador [data-bs-toggle="tooltip"]'
+      )
+    );
+    tooltipTriggerList.forEach((el) => {
+      new bootstrap.Tooltip(el);
+    });
+
     const modalHist = new bootstrap.Modal($("#modalHistorialColaborador"));
     modalHist.show();
   } catch (err) {
@@ -422,8 +589,9 @@ async function abrirHistorialColaborador(id) {
   }
 }
 
+/* ========== CARGA DE LISTAS (EDITAR / NUEVO) ========== */
+
 async function cargarListasEditar(col) {
-  // 1) CARGOS
   const cargos = await api("/api/collaborators/cargos");
   $("#editCargo").innerHTML = (cargos.items || [])
     .map(
@@ -434,7 +602,6 @@ async function cargarListasEditar(col) {
     )
     .join("");
 
-  // 2) PROYECTOS
   const proyectos = await api("/api/collaborators/proyectos");
   $("#editProyecto").innerHTML = (proyectos.items || [])
     .map(
@@ -445,7 +612,6 @@ async function cargarListasEditar(col) {
     )
     .join("");
 
-  // 3) ENCARGADOS  ✅ ahora usamos /encargados en vez de ?q=
   const resEncargados = await api("/api/collaborators/encargados");
   const encargados = resEncargados.items || [];
 
@@ -461,138 +627,148 @@ async function cargarListasEditar(col) {
       .join("");
 }
 
-$("#btnGuardarColaborador").addEventListener("click", async () => {
-  const id = $("#editId").value;
+/* ========== GUARDAR EDICIÓN ========== */
 
-  const payload = {
-    nombre: $("#editNombre").value.trim(),
-    rut: $("#editRUT").value.trim(),
-    cargo_id: $("#editCargo").value,
-    proyecto_id: $("#editProyecto").value,
-    encargado_id: $("#editEncargado").value || null,
-    genero: $("#editGenero").value || null,
-  };
+// Soportar ambos IDs por si el HTML tiene uno u otro
+const btnGuardarColaborador =
+  $("#btnGuardarColaborador") || $("#btnGuardarCambios");
 
-  try {
-    const data = await api(`/api/collaborators/${id}`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+if (btnGuardarColaborador) {
+  btnGuardarColaborador.addEventListener("click", async (e) => {
+    e.preventDefault(); // por si el botón está dentro de un <form>
 
-    if (!data.ok) {
-      showToast("No se pudieron guardar los cambios", "danger");
-      return;
+    const id = $("#editId").value;
+    const rut = $("#editRUT").value.trim();
+
+    try {
+      if (!rut) {
+        showToast("El RUT es obligatorio.", "danger");
+        return;
+      }
+
+      // Si NO es el genérico, validamos como RUT chileno
+      if (!esRutGenerico(rut) && !validarRutChileno(rut)) {
+        showToast("El RUT ingresado no es un RUT chileno válido.", "danger");
+        return;
+      }
+
+      const payload = {
+        nombre: $("#editNombre").value.trim(),
+        rut,
+        cargo_id: $("#editCargo").value,
+        proyecto_id: $("#editProyecto").value,
+        encargado_id: $("#editEncargado").value || null,
+        genero: $("#editGenero").value || null,
+      };
+
+      const data = await api(`/api/collaborators/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!data.ok) {
+        showToast(data.error || "No se pudieron guardar los cambios", "danger");
+        return;
+      }
+
+      showToast("Colaborador actualizado correctamente", "success");
+      bootstrap.Modal.getInstance($("#modalEditarColaborador")).hide();
+      loadDetails();
+    } catch (err) {
+      console.error(err);
+      showToast("Error al guardar cambios: " + err.message, "danger");
     }
-
-    showToast("Colaborador actualizado correctamente", "success");
-
-    // Cerrar modal
-    bootstrap.Modal.getInstance($("#modalEditarColaborador")).hide();
-
-    // Recargar tabla
-    loadDetails();
-  } catch (err) {
-    showToast("Error al guardar cambios", "danger");
-  }
-});
-
-function formatearFecha(fechaISO) {
-  if (!fechaISO) return "";
-  const d = new Date(fechaISO);
-
-  // Día / Mes / Año con ceros a la izquierda
-  const dia = String(d.getDate()).padStart(2, "0");
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const anio = d.getFullYear();
-
-  return `${dia}-${mes}-${anio}`;
+  });
 }
+
+/* ========== NUEVO COLABORADOR ========== */
 
 if (btnBackToCards) {
   btnBackToCards.addEventListener("click", () => {
-    // Limpiar selección de tabla si quieres
     selectedId = null;
     currentDetails = [];
     tablaBody.innerHTML = "";
     txtSearch.value = "";
-
     exitDetailMode();
   });
 }
 
-
-const btnNuevoColaborador = $("#btnNuevoColaborador");
-
 btnNuevoColaborador.addEventListener("click", async () => {
-  // Limpiar campos
   $("#newNombre").value = "";
   $("#newRUT").value = "";
   $("#newGenero").value = "";
 
-  // Cargar listas
   await cargarListasNuevo();
 
-  // Abrir modal
   const modal = new bootstrap.Modal($("#modalNuevoColaborador"));
   modal.show();
 });
 
 async function cargarListasNuevo() {
-  // CARGOS
   const cargos = await api("/api/collaborators/cargos");
   $("#newCargo").innerHTML = cargos.items
-    .map(c => `<option value="${c.id}">${c.nombre}</option>`)
+    .map((c) => `<option value="${c.id}">${c.nombre}</option>`)
     .join("");
 
-  // PROYECTOS
   const proyectos = await api("/api/collaborators/proyectos");
   $("#newProyecto").innerHTML = proyectos.items
-    .map(p => `<option value="${p.id}">${p.nombre}</option>`)
+    .map((p) => `<option value="${p.id}">${p.nombre}</option>`)
     .join("");
 
-  // ENCARGADOS
   const resEncargados = await api("/api/collaborators/encargados");
   $("#newEncargado").innerHTML =
     `<option value="">(Ninguno)</option>` +
     resEncargados.items
-      .map(e => `<option value="${e.id}">${e.nombre}</option>`)
+      .map((e) => `<option value="${e.id}">${e.nombre}</option>`)
       .join("");
 }
 
-$("#btnGuardarNuevoColaborador").addEventListener("click", async () => {
-  const payload = {
-    nombre: $("#newNombre").value.trim(),
-    rut: $("#newRUT").value.trim(),
-    cargo_id: $("#newCargo").value,
-    proyecto_id: $("#newProyecto").value,
-    encargado_id: $("#newEncargado").value || null,
-    genero: $("#newGenero").value || null,
-  };
+const btnGuardarNuevo = $("#btnGuardarNuevoColaborador");
+if (btnGuardarNuevo) {
+  btnGuardarNuevo.addEventListener("click", async (e) => {
+    e.preventDefault();
 
-  try {
-    const res = await api("/api/collaborators", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
+    const rut = $("#newRUT").value.trim();
 
-    if (!res.ok) {
-      showToast(res.error || "No se pudo crear el colaborador", "danger");
-      return;
+    try {
+      if (!rut) {
+        showToast("El RUT es obligatorio.", "danger");
+        return;
+      }
+
+      if (!esRutGenerico(rut) && !validarRutChileno(rut)) {
+        showToast("El RUT ingresado no es un RUT chileno válido.", "danger");
+        return;
+      }
+
+      const payload = {
+        nombre: $("#newNombre").value.trim(),
+        rut,
+        cargo_id: $("#newCargo").value,
+        proyecto_id: $("#newProyecto").value,
+        encargado_id: $("#newEncargado").value || null,
+        genero: $("#newGenero").value || null,
+      };
+
+      const res = await api("/api/collaborators", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      if (!res.ok) {
+        showToast(res.error || "No se pudo crear el colaborador", "danger");
+        return;
+      }
+
+      showToast("Colaborador creado correctamente", "success");
+      bootstrap.Modal.getInstance($("#modalNuevoColaborador")).hide();
+      exitDetailMode();
+      loadSummary();
+    } catch (err) {
+      console.error(err);
+      showToast("Error al guardar colaborador: " + err.message, "danger");
     }
-
-    showToast("Colaborador creado correctamente", "success");
-
-    // Cerrar modal
-    bootstrap.Modal.getInstance($("#modalNuevoColaborador")).hide();
-
-    // Volver a resumen y recargar
-    exitDetailMode();
-    loadSummary();
-
-  } catch (err) {
-    console.error(err);
-    showToast("Error al guardar colaborador", "danger");
-  }
-});
+  });
+}
