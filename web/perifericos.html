@@ -12,23 +12,39 @@
 </head>
 <body>
   <!-- Navbar -->
-  <nav class="navbar navbar-expand-lg bg-body-tertiary">
-  <div class="container">
-    <a class="navbar-brand text-info" href="/">Inventario</a>
-    <ul class="navbar-nav ms-3">
-      <li class="nav-item"><a class="nav-link" href="/activos.html">Activos</a></li>
-      <li class="nav-item"><a class="nav-link" href="/movimientos.html">Movimientos</a></li>
-      <li class="nav-item"><a class="nav-link" href="/perifericos.html">Periféricos</a></li>
-      <li class="nav-item"><a class="nav-link" href="/usuarios.html">Usuarios</a></li>
-      <li class="nav-item"><a class="nav-link" href="/reportes.html">Reportes</a></li>
-      <li class="nav-item"><a class="nav-link" href="/acta_entrega.html">Acta de entrega</a></li>
-    </ul>
-    <div class="ms-auto d-flex align-items-center gap-3">
-      <small id="userInfo" class="text-secondary"></small>
-      <button id="btnLogout" class="btn btn-outline-light btn-sm">Salir</button>
-    </div>
-  </div>
-</nav>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-semibold" href="./index.html">
+                Inventario
+            </a>
+
+            <!-- Botón hamburguesa -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+                aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Contenido del navbar -->
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="./activos.html">Activos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./movimientos.html">Movimientos</a></li>
+                    <li class="nav-item"><a class="nav-link active" aria-current="page" href="./perifericos.html">Periféricos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./usuarios.html">Usuarios</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./reportes.html">Reportes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./acta_entrega.html">Acta de entrega</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./colaboradores.html">Colaboradores</a></li>
+                </ul>
+
+                <div class="d-flex align-items-center">
+                    <span id="userInfo" class="text-light small me-3"></span>
+                    <button id="btnLogout" class="btn btn-outline-light btn-sm">
+                        Salir
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
 
 
   <main class="container py-4">

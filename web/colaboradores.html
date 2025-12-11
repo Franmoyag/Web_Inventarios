@@ -7,6 +7,7 @@
     <title>Colaboradores</title>
 
     <link rel="stylesheet" href="./lib/bootstrap.min.css">
+    <link rel="icon" type="image/svg+xml" href="./lib/header-logo.svg">
 
     <style>
         :root {
@@ -119,12 +120,40 @@
 
 </head>
 
-<body>
+<body class="bg-dark text-light">
+    <!-- NAVBAR PRINCIPAL-->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-semibold" href="./index.html">
+                Inventario
+            </a>
 
-    <nav class="navbar navbar-dark bg-dark px-3">
-        <span class="navbar-brand mb-0 h1">Colaboradores</span>
-        <small id="userInfo" class="text-light"></small>
-        <button id="btnLogout" class="btn btn-outline-light btn-sm ms-3">Salir</button>
+            <!-- Botón hamburguesa -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
+                aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <!-- Contenido del navbar -->
+            <div class="collapse navbar-collapse" id="mainNavbar">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                    <li class="nav-item"><a class="nav-link" href="./activos.html">Activos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./movimientos.html">Movimientos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./perifericos.html">Periféricos</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./usuarios.html">Usuarios</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./reportes.html">Reportes</a></li>
+                    <li class="nav-item"><a class="nav-link" href="./acta_entrega.html">Acta de entrega</a></li>
+                    <li class="nav-item"><a class="nav-link active" aria-current="page" href="./colaboradores.html">Colaboradores</a></li>
+                </ul>
+
+                <div class="d-flex align-items-center">
+                    <span id="userInfo" class="text-light small me-3"></span>
+                    <button id="btnLogout" class="btn btn-outline-light btn-sm">
+                        Salir
+                    </button>
+                </div>
+            </div>
+        </div>
     </nav>
 
     <div class="container py-4">
