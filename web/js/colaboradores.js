@@ -12,8 +12,10 @@ const emptyMsg = $("#emptyMsg");
 const errorMsg = $("#errorMsg");
 const txtSearch = $("#txtSearch");
 
+// Botones de agrupación / vista
 const btnGroupProyectos = $("#btnGroupProyectos");
 const btnGroupEncargados = $("#btnGroupEncargados");
+const btnGroupTotalColabs = $("#btnGroupTotalColabs"); // 👈 id correcto
 
 const userInfoEl = $("#userInfo");
 const btnLogout = $("#btnLogout");
@@ -23,10 +25,19 @@ const btnBackToCards = $("#btnBackToCards");
 
 const btnNuevoColaborador = $("#btnNuevoColaborador");
 
-let currentGroup = "proyectos";
+// Paginación
+const pageInfoEl = $("#pageInfo");
+const btnPrevColabs = $("#btnPrevColabs");
+const btnNextColabs = $("#btnNextColabs");
+
+let currentGroup = "proyectos"; // "proyectos" | "encargados"
+let viewMode = "cards"; // "cards" | "all"
 let summaryItems = [];
 let currentDetails = [];
 let selectedId = null;
+
+let currentPage = 1;
+const pageSize = 15;
 
 /* ========== HELPERS RUT Y FECHAS ========== */
 function formatearRut(rut) {
@@ -56,8 +67,6 @@ function formatearRut(rut) {
   // Si aún no hay DV, sólo mostramos el cuerpo con puntos
   return dv ? `${cuerpo}-${dv}` : cuerpo;
 }
-
-
 
 // Inputs de RUT que deben autoformatearse
 const inputsRut = ["#editRUT", "#newRUT"];
@@ -96,11 +105,8 @@ inputsRut.forEach((selector) => {
       }
       return;
     }
-
-    // Cualquier otra tecla especial, la dejamos pasar (por si acaso)
   });
 });
-
 
 const RUT_GENERICO_ORIGINAL = "11.111.111-1";
 
@@ -174,6 +180,29 @@ function exitDetailMode() {
   }
 }
 
+/* ========== BOTONES TOGGLE (Proyectos / Encargados / Total) ========== */
+
+function updateToggleButtons(mode) {
+  if (!btnGroupProyectos || !btnGroupEncargados || !btnGroupTotalColabs) return;
+
+  const makeSolid = (btn) => {
+    btn.classList.remove("btn-outline-info");
+    btn.classList.add("btn-info", "active");
+  };
+  const makeOutline = (btn) => {
+    btn.classList.remove("btn-info", "active");
+    btn.classList.add("btn-outline-info");
+  };
+
+  makeOutline(btnGroupProyectos);
+  makeOutline(btnGroupEncargados);
+  makeOutline(btnGroupTotalColabs);
+
+  if (mode === "proyectos") makeSolid(btnGroupProyectos);
+  else if (mode === "encargados") makeSolid(btnGroupEncargados);
+  else if (mode === "colaboradores") makeSolid(btnGroupTotalColabs);
+}
+
 /* ========== SESIÓN ========== */
 
 (async () => {
@@ -192,20 +221,27 @@ btnLogout.addEventListener("click", async () => {
 
 /* ========== CARGA INICIAL ========== */
 
-document.addEventListener("DOMContentLoaded", () => loadSummary());
+document.addEventListener("DOMContentLoaded", () => {
+  updateToggleButtons(currentGroup);
+  loadSummary();
+});
 
 btnGroupProyectos.addEventListener("click", () => setGroup("proyectos"));
 btnGroupEncargados.addEventListener("click", () => setGroup("encargados"));
+btnGroupTotalColabs.addEventListener("click", () => showAllCollaborators());
 
 function setGroup(group) {
-  if (currentGroup === group) return;
+  if (currentGroup === group && viewMode === "cards") return;
 
   currentGroup = group;
+  viewMode = "cards";
   selectedId = null;
   currentDetails = [];
+  currentPage = 1;
   txtSearch.value = "";
 
   exitDetailMode();
+  updateToggleButtons(group);
   loadSummary();
 }
 
@@ -270,10 +306,11 @@ cardsContainer.addEventListener("click", (e) => {
   card.classList.add("is-selected");
 
   selectedId = card.dataset.id;
+  viewMode = "cards";
   loadDetails();
 });
 
-/* ========== DETALLE (TABLA) ========== */
+/* ========== DETALLE POR CARD (TABLA) ========== */
 
 async function loadDetails() {
   try {
@@ -284,6 +321,7 @@ async function loadDetails() {
 
     const res = await api(`/api/collaborators/list${params}`);
     currentDetails = res.items || [];
+    currentPage = 1;
 
     const selected = summaryItems.find(
       (x) => String(x.id) === String(selectedId)
@@ -311,7 +349,55 @@ async function loadDetails() {
   }
 }
 
-txtSearch.addEventListener("input", applyFilter);
+/* ========== TOTAL COLABORADORES (TABLA COMPLETA) ========== */
+
+async function showAllCollaborators() {
+  try {
+    viewMode = "all";
+    selectedId = null;
+    currentPage = 1;
+    txtSearch.value = "";
+
+    updateToggleButtons("colaboradores");
+
+    const res = await api("/api/collaborators/list");
+    currentDetails = res.items || [];
+
+    selectedTitleEl.textContent = "Total de colaboradores";
+    selectedSubtitleEl.textContent = "";
+    selectedCountEl.textContent = `${currentDetails.length} colaborador(es)`;
+
+    enterDetailMode();
+    applyFilter();
+  } catch (err) {
+    console.error(err);
+    errorMsg.textContent = "Error cargando colaboradores.";
+    errorMsg.classList.remove("d-none");
+  }
+}
+
+/* ========== FILTRO + PAGINACIÓN ========== */
+
+txtSearch.addEventListener("input", () => {
+  currentPage = 1;
+  applyFilter();
+});
+
+if (btnPrevColabs) {
+  btnPrevColabs.addEventListener("click", () => {
+    if (currentPage > 1) {
+      currentPage--;
+      applyFilter();
+    }
+  });
+}
+
+if (btnNextColabs) {
+  btnNextColabs.addEventListener("click", () => {
+    currentPage++;
+    applyFilter();
+  });
+}
 
 function applyFilter() {
   const t = txtSearch.value.toLowerCase().trim();
@@ -322,7 +408,15 @@ function applyFilter() {
       (c.rut || "").toLowerCase().includes(t)
   );
 
-  tablaBody.innerHTML = rows
+  const total = rows.length;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  if (currentPage > totalPages) currentPage = totalPages;
+
+  const start = (currentPage - 1) * pageSize;
+  const end = start + pageSize;
+  const pageRows = rows.slice(start, end);
+
+  tablaBody.innerHTML = pageRows
     .map(
       (row) => `
       <tr>
@@ -375,6 +469,7 @@ function applyFilter() {
     )
     .join("");
 
+  // tooltips
   const tooltipTriggerList = [].slice.call(
     document.querySelectorAll('[data-bs-toggle="tooltip"]')
   );
@@ -382,8 +477,22 @@ function applyFilter() {
     new bootstrap.Tooltip(el);
   });
 
-  emptyMsg.classList.toggle("d-none", rows.length > 0);
-  selectedCountEl.textContent = `${rows.length} colaborador(es)`;
+  emptyMsg.classList.toggle("d-none", total > 0);
+  selectedCountEl.textContent = `${total} colaborador(es)`;
+
+  // info de página
+  if (pageInfoEl) {
+    if (total === 0) {
+      pageInfoEl.textContent = "Sin resultados";
+    } else {
+      const from = start + 1;
+      const to = start + pageRows.length;
+      pageInfoEl.textContent = `Mostrando ${from}-${to} de ${total}`;
+    }
+  }
+
+  if (btnPrevColabs) btnPrevColabs.disabled = currentPage <= 1;
+  if (btnNextColabs) btnNextColabs.disabled = currentPage >= totalPages;
 }
 
 /* ========== CAMBIO ACTIVO/INACTIVO ========== */
@@ -674,7 +783,12 @@ if (btnGuardarColaborador) {
 
       showToast("Colaborador actualizado correctamente", "success");
       bootstrap.Modal.getInstance($("#modalEditarColaborador")).hide();
-      loadDetails();
+      // recargar la vista actual
+      if (viewMode === "all") {
+        showAllCollaborators();
+      } else {
+        loadDetails();
+      }
     } catch (err) {
       console.error(err);
       showToast("Error al guardar cambios: " + err.message, "danger");
@@ -690,6 +804,8 @@ if (btnBackToCards) {
     currentDetails = [];
     tablaBody.innerHTML = "";
     txtSearch.value = "";
+    currentPage = 1;
+    viewMode = "cards";
     exitDetailMode();
   });
 }
@@ -764,8 +880,14 @@ if (btnGuardarNuevo) {
 
       showToast("Colaborador creado correctamente", "success");
       bootstrap.Modal.getInstance($("#modalNuevoColaborador")).hide();
-      exitDetailMode();
-      loadSummary();
+
+      // Si estoy en "Total colaboradores", lo recargo; si no, vuelvo al resumen
+      if (viewMode === "all") {
+        showAllCollaborators();
+      } else {
+        exitDetailMode();
+        loadSummary();
+      }
     } catch (err) {
       console.error(err);
       showToast("Error al guardar colaborador: " + err.message, "danger");

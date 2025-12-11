@@ -226,31 +226,32 @@ router.get("/proyectos", verifyAuth, async (req, res) => {
 
 /**
  * GET /api/collaborators/list
- * Detalle de colaboradores por proyecto o encargado
+ * - Si viene proyecto_id => lista por proyecto
+ * - Si viene encargado_id => lista por encargado
+ * - Si no viene ninguno => lista TODOS los colaboradores
+ *   (para el botón "Total Colaboradores")
  */
 router.get("/list", verifyAuth, async (req, res) => {
   try {
     const { proyecto_id, encargado_id, q = "" } = req.query;
 
-    if (!proyecto_id && !encargado_id) {
-      return res
-        .status(400)
-        .json({ ok: false, error: "Debe indicar proyecto_id o encargado_id." });
-    }
-
+    // Siempre partimos de esta base
     let where = "c.activo IN (0,1)";
     const params = [];
 
+    // Filtro por proyecto (si viene)
     if (proyecto_id) {
       where += " AND c.proyecto_id = ?";
       params.push(proyecto_id);
     }
 
+    // Filtro por encargado (si viene)
     if (encargado_id) {
       where += " AND c.encargado_id = ?";
       params.push(encargado_id);
     }
 
+    // Búsqueda por texto (nombre o RUT)
     if (q.trim()) {
       const like = `%${q}%`;
       where += " AND (c.nombre LIKE ? OR c.rut LIKE ?)";
@@ -281,14 +282,17 @@ router.get("/list", verifyAuth, async (req, res) => {
     `;
 
     const [rows] = await pool.query(sql, params);
-    res.json({ ok: true, items: rows });
+
+    return res.json({ ok: true, items: rows });
   } catch (err) {
     console.error("[/api/collaborators/list] Error:", err);
-    res
+    return res
       .status(500)
       .json({ ok: false, error: "Error al obtener colaboradores." });
   }
 });
+
+
 
 /**
  * PUT /api/collaborators/:id/activo

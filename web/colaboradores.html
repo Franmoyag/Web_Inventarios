@@ -143,7 +143,8 @@
                     <li class="nav-item"><a class="nav-link" href="./usuarios.html">Usuarios</a></li>
                     <li class="nav-item"><a class="nav-link" href="./reportes.html">Reportes</a></li>
                     <li class="nav-item"><a class="nav-link" href="./acta_entrega.html">Acta de entrega</a></li>
-                    <li class="nav-item"><a class="nav-link active" aria-current="page" href="./colaboradores.html">Colaboradores</a></li>
+                    <li class="nav-item"><a class="nav-link active" aria-current="page"
+                            href="./colaboradores.html">Colaboradores</a></li>
                 </ul>
 
                 <div class="d-flex align-items-center">
@@ -162,9 +163,15 @@
             <h3 class="mb-0">Listado de colaboradores</h3>
 
             <div class="d-flex gap-2">
-                <button id="btnGroupProyectos" class="btn btn-info btn-sm active">Por Proyectos</button>
-                <button id="btnGroupEncargados" class="btn btn-outline-info btn-sm">Por Encargados</button>
-
+                <button id="btnGroupTotalColabs" class="btn btn-outline-info btn-sm">
+                    Total Colaboradores
+                </button>
+                <button id="btnGroupProyectos" class="btn btn-info btn-sm active">
+                    Por Proyectos
+                </button>
+                <button id="btnGroupEncargados" class="btn btn-outline-info btn-sm">
+                    Por Encargados
+                </button>
                 <button id="btnNuevoColaborador" class="btn btn-success btn-sm">
                     + Agregar
                 </button>
@@ -187,6 +194,7 @@
                 </button>
             </div>
 
+            <!-- Buscador -->
             <input id="txtSearch" class="form-control mb-3" placeholder="Buscar por nombre o RUT...">
 
             <div class="table-responsive">
@@ -205,6 +213,20 @@
                     </thead>
                     <tbody id="tablaColaboradoresBody"></tbody>
                 </table>
+            </div>
+
+
+            <!-- Paginacion -->
+            <div class="d-flex justify-content-between align-items-center mt-2">
+                <div id="pageInfo" class="small text-secondary"></div>
+                <div>
+                    <button id="btnPrevColabs" class="btn btn-outline-light btn-sm me-1">
+                        « Anterior
+                    </button>
+                    <button id="btnNextColabs" class="btn btn-outline-light btn-sm">
+                        Siguiente »
+                    </button>
+                </div>
             </div>
 
             <div id="emptyMsg" class="text-center text-secondary d-none">No hay colaboradores para mostrar.</div>
