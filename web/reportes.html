@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="es" data-bs-theme="dark">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,24 +8,85 @@
     <link rel="icon" type="image/svg+xml" href="./lib/header-logo.svg">
     <link rel="stylesheet" href="./css/styles.css">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+
     <style>
-        .card { 
-            border: 1px solid rgba(255,255,255,.08); 
-            backdrop-filter: blur(6px); 
+        .card {
+            border: 1px solid rgba(255, 255, 255, .08);
+            backdrop-filter: blur(6px);
         }
 
-        .kpi { 
-            font-size: 1.8rem; 
-            font-weight: 700; 
+        .kpi {
+            font-size: 1.8rem;
+            font-weight: 700;
         }
 
-        canvas { 
-            max-height: 340px; 
+        canvas {
+            max-height: 360px;
+        }
+
+        .layout-reportes {
+            min-height: calc(100vh - 56px);
+        }
+
+        .sidebar-reportes .nav-link {
+            border-radius: 0.6rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .sidebar-reportes .nav-link i {
+            font-size: 1rem;
+        }
+
+        .sidebar-reportes .nav-link.active {
+            background: linear-gradient(135deg, #0ea5e9, #6366f1);
+            color: #fff;
+        }
+
+        .sidebar-reportes .nav-link:not(.active) {
+            background: rgba(15, 23, 42, 0.6);
+            color: #e5e7eb;
+        }
+
+        .sidebar-reportes .nav-link:not(.active):hover {
+            background: rgba(30, 64, 175, 0.7);
+            color: #fff;
+        }
+
+        .sidebar-title {
+            font-size: 0.8rem;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .report-view {
+            animation: fadeIn .2s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(4px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .table-sm th,
+        .table-sm td {
+            font-size: 0.8rem;
         }
     </style>
 </head>
+
 <body>
 
     <!-- Navbar -->
@@ -34,20 +96,19 @@
                 Inventario
             </a>
 
-            <!-- Botón hamburguesa -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNavbar"
                 aria-controls="mainNavbar" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
 
-            <!-- Contenido del navbar -->
             <div class="collapse navbar-collapse" id="mainNavbar">
                 <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                     <li class="nav-item"><a class="nav-link" href="./activos.html">Activos</a></li>
                     <li class="nav-item"><a class="nav-link" href="./movimientos.html">Movimientos</a></li>
                     <li class="nav-item"><a class="nav-link" href="./perifericos.html">Periféricos</a></li>
                     <li class="nav-item"><a class="nav-link" href="./usuarios.html">Usuarios</a></li>
-                    <li class="nav-item"><a class="nav-link active" aria-current="page" href="./reportes.html">Reportes</a></li>
+                    <li class="nav-item"><a class="nav-link active" aria-current="page"
+                            href="./reportes.html">Reportes</a></li>
                     <li class="nav-item"><a class="nav-link" href="./acta_entrega.html">Acta de entrega</a></li>
                     <li class="nav-item"><a class="nav-link" href="./colaboradores.html">Colaboradores</a></li>
                 </ul>
@@ -62,145 +123,319 @@
         </div>
     </nav>
 
-
-
-    <main class="container py-4">
-
-
-        <!-- Generador de Reportes -->
-        <div class="card mt-4">
-            <div class="card-body">
-                <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-                    <h5 class="mb-0">Generador de reportes</h5>
-                    <div>
-                        <button id="btnExportCSV" class="btn btn-outline-info btn-sm">Exportar CSV</button>
-                    </div>
-                </div>
-        
-                <div class="toolbar-sticky mt-3">
-                    <div class="row g-2">
-                        <!-- Tipo de reporte -->
-                        <div class="col-12 col-md-3">
-                            <label class="form-label mb-1">Tipo</label>
-                            <select id="repTipo" class="form-select">
-                                <option value="activos">Activos</option>
-                                <option value="movimientos">Movimientos</option>
-                                <!-- Si luego quieres: <option value="perifericos">Periféricos</option> -->
-                            </select>
-                        </div>
-        
-                        <!-- Filtros comunes (se rellenan dinámicamente) -->
-                        <div class="col-12 col-md-3">
-                            <label class="form-label mb-1">Estado</label>
-                            <select id="fEstado" class="form-select">
-                                <option value="">Todos</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-3">
-                            <label class="form-label mb-1">Categoría</label>
-                            <select id="fCategoria" class="form-select">
-                                <option value="">Todas</option>
-                            </select>
-                        </div>
-                        <div class="col-12 col-md-3">
-                            <label class="form-label mb-1">Marca</label>
-                            <select id="fMarca" class="form-select">
-                                <option value="">Todas</option>
-                            </select>
-                        </div>
-        
-                        <!-- Solo Movimientos -->
-                        <div class="col-12 col-md-3 d-none" id="boxFechaDesde">
-                            <label class="form-label mb-1">Desde (fecha)</label>
-                            <input id="fDesde" type="date" class="form-control">
-                        </div>
-                        <div class="col-12 col-md-3 d-none" id="boxFechaHasta">
-                            <label class="form-label mb-1">Hasta (fecha)</label>
-                            <input id="fHasta" type="date" class="form-control">
-                        </div>
-        
-                        <!-- Selección de columnas -->
-                        <div class="col-12">
-                            <label class="form-label mb-1">Columnas a incluir</label>
-                            <div id="colsActivos" class="d-flex flex-wrap gap-2">
-                                <!-- Se rellenan dinámicamente -->
-                            </div>
-                            <div id="colsMovimientos" class="d-flex flex-wrap gap-2 d-none">
-                                <!-- Se rellenan dinámicamente -->
-                            </div>
-                        </div>
-                    </div>
-                </div>
-        
-            </div>
-        </div>
-        <br>
-
-
-        <!-- KPIs -->
+    <!-- CONTENIDO PRINCIPAL -->
+    <main class="container-fluid py-4 layout-reportes">
         <div class="row g-3">
-            <div class="col-md-4">
-                <div class="card"><div class="card-body">
-                    <div class="text-secondary">Total de activos</div>
-                    <div id="kpiTotal" class="kpi">—</div>
-                </div></div>
-            </div>
-            <div class="col-md-4">
-                <div class="card"><div class="card-body">
-                    <div class="text-secondary">Activos prestados</div>
-                    <div id="kpiPrestados" class="kpi">—</div>
-                </div></div>
-            </div>
-            <div class="col-md-4">
-                <div class="card"><div class="card-body">
-                    <div class="text-secondary">Movimientos este mes</div>
-                    <div id="kpiMovMes" class="kpi">—</div>
-                </div></div>
-            </div>
+
+            <!-- SIDEBAR -->
+            <aside class="col-12 col-md-3 col-lg-2 sidebar-reportes">
+                <div class="card h-100">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <span class="sidebar-title text-secondary">Panel de reportes</span>
+                            <i class="bi bi-graph-up-arrow text-info"></i>
+                        </div>
+
+                        <div class="nav flex-column nav-pills gap-1" id="reportNav" role="tablist">
+                            <button class="nav-link active" type="button" data-report="resumen">
+                                <i class="bi bi-speedometer2"></i>
+                                Resumen General
+                            </button>
+                            <button class="nav-link" type="button" data-report="estados">
+                                <i class="bi bi-diagram-3"></i>
+                                Estados de Activos
+                            </button>
+                            <button class="nav-link" type="button" data-report="marcas">
+                                <i class="bi bi-layers"></i>
+                                Top Marcas
+                            </button>
+                            <button class="nav-link" type="button" data-report="categorias">
+                                <i class="bi bi-grid-3x3-gap"></i>
+                                Categorías
+                            </button>
+                            <button class="nav-link" type="button" data-report="por-colaborador">
+                                <i class="bi bi-person-badge"></i>
+                                Activos por Colaborador
+                            </button>
+                            <button class="nav-link" type="button" data-report="por-proyecto">
+                                <i class="bi bi-building"></i>
+                                Activos por Proyecto
+                            </button>
+                            <button class="nav-link" type="button" data-report="perifericos">
+                                <i class="bi bi-hdd-network"></i>
+                                Periféricos
+                            </button>
+                            <button class="nav-link" type="button" data-report="generator">
+                                <i class="bi bi-filetype-csv"></i>
+                                Generador de Reportes
+                            </button>
+                        </div>
+
+                        <hr class="my-3">
+
+                        <small class="text-secondary d-block">
+                            Usa las opciones para ver:
+                            <br>– Salud del parque
+                            <br>– Carga por usuario y proyecto
+                            <br>– Riesgos de stock en periféricos
+                        </small>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- AREA DINÁMICA -->
+            <section class="col-12 col-md-9 col-lg-10">
+
+                <!-- VISTA: RESUMEN GENERAL -->
+                <div id="viewResumen" class="report-view">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="text-secondary">Total de activos</div>
+                                    <div id="kpiTotal" class="kpi">—</div>
+                                    <small class="text-secondary-50">Incluye todas las categorías y estados.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="text-secondary">Activos prestados</div>
+                                    <div id="kpiPrestados" class="kpi">—</div>
+                                    <small class="text-secondary-50">Activos actualmente asignados a Colaboradores.</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="text-secondary">Movimientos este mes</div>
+                                    <div id="kpiMovMes" class="kpi">—</div>
+                                    <small class="text-secondary-50">Entradas / salidas registradas en el mes.</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h5 class="mb-3">Actividad (snapshot)</h5>
+                            <p class="text-secondary small mb-2">
+                                Comparación rápida entre el total del parque, los activos prestados y los movimientos actuales.
+                            </p>
+                            <canvas id="chartMov"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA: ESTADOS DE ACTIVOS -->
+                <div id="viewEstados" class="report-view d-none">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="mb-3">Distribución por estado</h5>
+                            <p class="text-secondary small mb-2">
+                                Reparto del parque entre estados como <strong>DISPONIBLE</strong>, <strong>ASIGNADO</strong>,
+                                <strong>MANTENCIÓN</strong>, <strong>BAJA</strong>, <strong>OBSOLETO</strong>.
+                            </p>
+                            <canvas id="chartEstados"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA: TOP MARCAS -->
+                <div id="viewMarcas" class="report-view d-none">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="mb-3">Top Marcas</h5>
+                            <p class="text-secondary small mb-2">
+                                Marcas con mayor cantidad de activos en el inventario.
+                            </p>
+                            <canvas id="chartMarcas"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA: CATEGORÍAS -->
+                <div id="viewCategorias" class="report-view d-none">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="mb-3">Distribución por categoría</h5>
+                            <p class="text-secondary small mb-2">
+                                Distribución del parque por tipo de activo (notebooks, celulares, impresoras, etc.).
+                            </p>
+                            <canvas id="chartCategorias"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA: ACTIVOS POR COLABORADOR -->
+                <div id="viewPorColaborador" class="report-view d-none">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="mb-3">Activos por colaborador</h5>
+                            <p class="text-secondary small mb-2">
+                                Carga de dispositivos por persona (solo activos <strong>ASIGNADOS</strong>), ideal para ver quién tiene más equipos.
+                            </p>
+                            <canvas id="chartColaboradores"></canvas>
+
+                            <div class="table-responsive mt-3">
+                                <table class="table table-sm table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Colaborador</th>
+                                            <th>Activos asignados</th>
+                                            <th>Total de activos (todos los estados)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyColaboradores"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA: ACTIVOS POR PROYECTO -->
+                <div id="viewPorProyecto" class="report-view d-none">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="mb-3">Activos por proyecto / parque</h5>
+                            <p class="text-secondary small mb-2">
+                                Visión por proyecto: cuántos activos hay, cuántos están asignados, disponibles y fuera de servicio.
+                            </p>
+                            <canvas id="chartProyectos"></canvas>
+
+                            <div class="table-responsive mt-3">
+                                <table class="table table-sm table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Proyecto</th>
+                                            <th>Total</th>
+                                            <th>Asignados</th>
+                                            <th>Disponibles</th>
+                                            <th>Fuera de servicio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyProyectos"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA: PERIFÉRICOS -->
+                <div id="viewPerifericos" class="report-view d-none">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="mb-3">Salud de periféricos</h5>
+                            <p class="text-secondary small mb-2">
+                                Comparación entre <strong>stock actual</strong> y <strong>stock mínimo</strong> por categoría.
+                                Muestra dónde hay riesgo de quiebre de stock.
+                            </p>
+                            <canvas id="chartPerifericos"></canvas>
+
+                            <div class="table-responsive mt-3">
+                                <table class="table table-sm table-hover align-middle">
+                                    <thead>
+                                        <tr>
+                                            <th>Categoría</th>
+                                            <th>Stock actual</th>
+                                            <th>Stock mínimo</th>
+                                            <th>Faltante</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="tbodyPerifericos"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- VISTA: GENERADOR DE REPORTES -->
+                <div id="viewGenerator" class="report-view d-none">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                <h5 class="mb-0">Generador de reportes</h5>
+                                <div>
+                                    <button id="btnExportCSV" class="btn btn-outline-info btn-sm">Exportar CSV</button>
+                                </div>
+                            </div>
+
+                            <div class="mt-3">
+                                <div class="row g-2">
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label mb-1">Tipo</label>
+                                        <select id="repTipo" class="form-select">
+                                            <option value="activos">Activos</option>
+                                            <option value="movimientos">Movimientos</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label mb-1">Estado</label>
+                                        <select id="fEstado" class="form-select">
+                                            <option value="">Todos</option>
+                                        </select>
+                                    </div>
+                                    <div class="col-12 col-md-3">
+                                        <label class="form-label mb-1">Marca</label>
+                                        <select id="fMarca" class="form-select">
+                                            <option value="">Todas</option>
+                                        </select>
+                                    </div>
+
+                                    <div class="col-12 col-md-3 d-none" id="boxFechaDesde">
+                                        <label class="form-label mb-1">Desde (fecha)</label>
+                                        <input id="fDesde" type="date" class="form-control">
+                                    </div>
+                                    <div class="col-12 col-md-3 d-none" id="boxFechaHasta">
+                                        <label class="form-label mb-1">Hasta (fecha)</label>
+                                        <input id="fHasta" type="date" class="form-control">
+                                    </div>
+
+                                    <div class="col-12">
+                                        <label class="form-label mb-1">Columnas a incluir</label>
+                                        <div id="colsActivos" class="d-flex flex-wrap gap-2"></div>
+                                        <div id="colsMovimientos" class="d-flex flex-wrap gap-2 d-none"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Descargas directas backend -->
+                    <div class="card mt-3">
+                        <div class="card-body">
+                            <h6 class="mb-2">Descargas rápidas desde el backend</h6>
+                            <p class="text-secondary small mb-3">
+                                Exportes completos generados directamente desde el servidor, con estructura fija.
+                            </p>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-outline-info btn-sm" href="/api/reports/export/assets.csv">
+                                    Descargar Activos (CSV)
+                                </a>
+                                <a class="btn btn-outline-info btn-sm" href="/api/reports/export/peripherals.csv">
+                                    Descargar Periféricos (CSV)
+                                </a>
+                                <a class="btn btn-outline-info btn-sm" href="/api/reports/export/movements.csv">
+                                    Descargar Movimientos (CSV)
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
         </div>
-
-        <!-- Estados -->
-        <div class="card mt-3">
-            <div class="card-body">
-                <h5 class="mb-3">Distribucion por Estado</h5>
-                <canvas id="chartEstados"></canvas>
-            </div>
-        </div>
-
-
-        <!-- Top marcas -->
-        <div class="card mt-3">
-            <div class="card-body">
-                <h5 class="mb-3">Top Marcas</h5>
-                <canvas id="chartMarcas"></canvas>
-            </div>
-        </div>
-
-        <div class="card mt-3">
-            <div class="card-body">
-                <h5 class="mb-3">Activos por Categoría</h5>
-                <canvas id="chartCategorias"></canvas>
-            </div>
-        </div>
-
-
-        <!-- Gráfico simple (dummy con datos del backend actual) -->
-        <div class="card mt-3">
-            <div class="card-body">
-                <h5 class="mb-3">Actividad</h5>
-                <canvas id="chartMov"></canvas>
-            </div>
-        </div>
-        <div class="mt-3 d-flex flex-wrap gap-2">
-            <a class="btn btn-outline-info btn-sm" href="/api/reports/export/assets.csv">Descargar Activos (CSV)</a>
-            <a class="btn btn-outline-info btn-sm" href="/api/reports/export/peripherals.csv">Descargar Periféricos (CSV)</a>
-            <a class="btn btn-outline-info btn-sm" href="/api/reports/export/movements.csv">Descargar Movimientos (CSV)</a>
-        </div>
-
-
-        
-
     </main>
+                            
+                            
+                            
+                            
+                            
+                            
 
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
@@ -209,6 +444,7 @@
     <script type="module" src="/js/reportes.js"></script>
 
 
-    
+
 </body>
+
 </html>
