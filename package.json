@@ -17,6 +17,7 @@
   "dependencies": {
     "bcryptjs": "2.4.3",
     "chart.js": "4.5.1",
+    "cloudflared": "0.7.1",
     "cors": "2.8.5",
     "docxtemplater": "3.67.5",
     "dotenv": "17.2.3",
