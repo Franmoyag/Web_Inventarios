@@ -240,6 +240,33 @@ async function renderResumen() {
   }
 }
 
+async function renderMarcasFiltrado() {
+  if (!state.activos.length) {
+    await loadData();
+  }
+
+  const cat = getEstadoCategoriaSeleccionada(); // NOTEBOOK | CELULAR
+
+  const activosFiltrados = state.activos.filter((a) => {
+    const c = String(a.categoria || "").trim().toUpperCase();
+    return c === cat;
+  });
+
+  const porMarca = groupCount(activosFiltrados, (a) =>
+    (a.marca || "").trim().toUpperCase()
+  );
+
+  const topMarca = porMarca.slice(0, 10);
+
+  makeBar(
+    "chartMarcas",
+    topMarca.map(([k]) => k || "—"),
+    topMarca.map(([, v]) => v),
+    `Activos (${cat})`
+  );
+}
+
+
 function getEstadoCategoriaSeleccionada() {
   const el = document.querySelector('input[name="estadoCat"]:checked');
   return (el?.value || "NOTEBOOK").toUpperCase();
@@ -553,10 +580,12 @@ function showView(key) {
 
   if (key === "resumen") renderResumen();
   if (key === "estados") renderEstadosFiltrado();
+  if (key === "marcas") renderMarcasFiltrado();   // 👈 NUEVO
   if (key === "por-colaborador") renderPorColaborador();
   if (key === "por-proyecto") renderPorProyecto();
   if (key === "perifericos") renderPerifericos();
 }
+
 
 const nav = safeGet("reportNav");
 if (nav) {
@@ -1033,5 +1062,6 @@ if (!window.__reportesHoverPopoversBound) {
 document.addEventListener("change", (e) => {
     if (e.target && e.target.name === "estadoCat") {
       renderEstadosFiltrado();
+      renderMarcasFiltrado();
     }
   });
