@@ -300,19 +300,20 @@
                                 <strong>MANTENCIÓN</strong>, <strong>BAJA</strong>, <strong>OBSOLETO</strong>.
                             </p>
 
-                            <div class="d-flex align-items-center justify-content-between mb-2">
-                                
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="text-muted small">Filtrar por Categoría</div>
 
                                 <div class="btn-group btn-group-sm" role="group" aria-label="Filtro categoría estados">
-                                <div class="text-muted small">Filtrar por Categoria
-                                    <input type="radio" class="btn-check" name="estadoCat" id="estadoCatNotebook" value="NOTEBOOK" autocomplete="off" checked>
+                                    <input type="radio" class="btn-check" name="estadoCat" id="estadoCatNotebook"
+                                        value="NOTEBOOK" autocomplete="off" checked>
                                     <label class="btn btn-outline-light" for="estadoCatNotebook">Notebooks</label>
 
-                                    <input type="radio" class="btn-check" name="estadoCat" id="estadoCatCelular" value="CELULAR" autocomplete="off" checked>
+                                    <input type="radio" class="btn-check" name="estadoCat" id="estadoCatCelular"
+                                        value="CELULAR" autocomplete="off">
                                     <label class="btn btn-outline-light" for="estadoCatCelular">Celulares</label>
-                                <br></div>
                                 </div>
                             </div>
+
                             <canvas id="chartEstados"></canvas>
                         </div>
                     </div>
@@ -326,19 +327,26 @@
                             <p class="text-secondary small mb-2">
                                 Marcas con mayor cantidad de activos en el inventario.
                             </p>
-                            <div class="btn-group btn-group-sm" role="group" aria-label="Filtro categoría estados">
-                                <div class="text-muted small">Filtrar por Categoria
-                                    <input type="radio" class="btn-check" name="estadoCat" id="estadoCatNotebook" value="NOTEBOOK" autocomplete="off" checked>
-                                    <label class="btn btn-outline-light" for="estadoCatNotebook">Notebooks</label>
 
-                                    <input type="radio" class="btn-check" name="estadoCat" id="estadoCatCelular" value="CELULAR" autocomplete="off" checked>
-                                    <label class="btn btn-outline-light" for="estadoCatCelular">Celulares</label>
-                                <br></div>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <div class="text-muted small">Filtrar por Categoría</div>
+
+                                <div class="btn-group btn-group-sm" role="group" aria-label="Filtro categoría marcas">
+                                    <input type="radio" class="btn-check" name="marcaCat" id="marcaCatNotebook"
+                                        value="NOTEBOOK" autocomplete="off" checked>
+                                    <label class="btn btn-outline-light" for="marcaCatNotebook">Notebooks</label>
+
+                                    <input type="radio" class="btn-check" name="marcaCat" id="marcaCatCelular"
+                                        value="CELULAR" autocomplete="off">
+                                    <label class="btn btn-outline-light" for="marcaCatCelular">Celulares</label>
                                 </div>
+                            </div>
+
                             <canvas id="chartMarcas"></canvas>
                         </div>
                     </div>
                 </div>
+
 
                 <!-- VISTA: CATEGORÍAS -->
                 <div id="viewCategorias" class="report-view d-none">
@@ -348,6 +356,17 @@
                             <p class="text-secondary small mb-2">
                                 Distribución del parque por tipo de activo (notebooks, celulares, impresoras, etc.).
                             </p>
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <label class="small text-muted mb-0">Filtrar por estado:</label>
+                                <select id="filterEstadoCategorias" class="form-select form-select-sm"
+                                    style="max-width: 240px;">
+                                    <option value="ALL" selected>Todos</option>
+                                    <option value="ASIGNADO">ASIGNADO</option>
+                                    <option value="DISPONIBLE">DISPONIBLE</option>
+                                    <option value="BAJA">BAJA</option>
+                                    <option value="OBSOLETO">OBSOLETO</option>
+                                </select>
+                            </div>
                             <canvas id="chartCategorias"></canvas>
                         </div>
                     </div>

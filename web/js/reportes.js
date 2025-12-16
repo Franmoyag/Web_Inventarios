@@ -71,10 +71,7 @@ async function loadData() {
     const movResp = await api("/api/movements");
     state.movimientos = movResp.items || [];
   } catch (e) {
-    console.warn(
-      "No se pudieron cargar movimientos (no crítico para gráficos básicos)",
-      e
-    );
+    console.warn("No se pudieron cargar movimientos (no crítico)", e);
   }
 
   if (!state.kpis.movimientos_mes && state.movimientos.length) {
@@ -109,13 +106,10 @@ function groupCount(arr, keyFn) {
 
 // Mantener instancias Chart.js por canvas para evitar "Canvas is already in use"
 const _charts = {};
-
 function destroyChart(canvasId) {
   const ch = _charts[canvasId];
   if (ch) {
-    try {
-      ch.destroy();
-    } catch {}
+    try { ch.destroy(); } catch {}
     delete _charts[canvasId];
   }
 }
@@ -159,41 +153,72 @@ function makeBar(id, labels, data, label = "Cantidad") {
 }
 
 // =======================
+// Helpers: radios + Bootstrap active
+// =======================
+
+// Fuerza default NOTEBOOK si no hay nada marcado
+function ensureDefaultRadioChecked(groupName, defaultValue = "NOTEBOOK") {
+  const checked = document.querySelector(`input[name="${groupName}"]:checked`);
+  if (checked) return checked;
+
+  const fallback = document.querySelector(
+    `input[name="${groupName}"][value="${defaultValue}"]`
+  );
+  if (fallback) {
+    fallback.checked = true;
+    return fallback;
+  }
+
+  // Si no existe value NOTEBOOK, marca el primero
+  const first = document.querySelector(`input[name="${groupName}"]`);
+  if (first) first.checked = true;
+  return first || null;
+}
+
+// Sincroniza la clase .active del label (Bootstrap btn-check)
+function syncRadioButtons(groupName) {
+  const checked = ensureDefaultRadioChecked(groupName, "NOTEBOOK");
+  if (!checked) return;
+
+  // Quita active a todos los labels del grupo
+  document
+    .querySelectorAll(`input[name="${groupName}"]`)
+    .forEach((inp) => {
+      const lb = document.querySelector(`label[for="${inp.id}"]`);
+      lb?.classList.remove("active");
+    });
+
+  // Agrega active al label del checked
+  const activeLabel = document.querySelector(`label[for="${checked.id}"]`);
+  activeLabel?.classList.add("active");
+}
+
+// =======================
 // Render básico (resumen)
 // =======================
 async function renderResumen() {
-  // Asegurar data
   if (!state.activos.length && !state.kpis.total_activos) {
     await loadData();
   }
-  const k = state.kpis || {
-    total_activos: 0,
-    prestados: 0,
-    movimientos_mes: 0,
-  };
 
-  const kpiTotalEl = safeGet("kpiTotal");
-  const kpiPrestadosEl = safeGet("kpiPrestados");
-  const kpiMovMesEl = safeGet("kpiMovMes");
+  const k = state.kpis || { total_activos: 0, prestados: 0, movimientos_mes: 0 };
 
-  if (kpiTotalEl) kpiTotalEl.textContent = k.total_activos ?? 0;
-  if (kpiPrestadosEl) kpiPrestadosEl.textContent = k.prestados ?? 0;
-  if (kpiMovMesEl) kpiMovMesEl.textContent = k.movimientos_mes ?? 0;
+  safeGet("kpiTotal") && (safeGet("kpiTotal").textContent = k.total_activos ?? 0);
+  safeGet("kpiPrestados") &&
+    (safeGet("kpiPrestados").textContent = k.prestados ?? 0);
+  safeGet("kpiMovMes") &&
+    (safeGet("kpiMovMes").textContent = k.movimientos_mes ?? 0);
 
-  // Estados
-  const porEstado = groupCount(state.activos, (a) =>
-    (a.estado || "").toUpperCase()
-  );
+  // Resumen: estados (sin filtro)
+  const porEstado = groupCount(state.activos, (a) => (a.estado || "").toUpperCase());
   makeDoughnut(
     "chartEstados",
     porEstado.map(([k]) => k || "—"),
     porEstado.map(([, v]) => v)
   );
 
-  // Top 10 marcas
-  const porMarca = groupCount(state.activos, (a) =>
-    (a.marca || "").trim().toUpperCase()
-  );
+  // Resumen: top marcas (sin filtro)
+  const porMarca = groupCount(state.activos, (a) => (a.marca || "").trim().toUpperCase());
   const topMarca = porMarca.slice(0, 10);
   makeBar(
     "chartMarcas",
@@ -202,10 +227,8 @@ async function renderResumen() {
     "Activos"
   );
 
-  // Categorías
-  const porCat = groupCount(state.activos, (a) =>
-    (a.categoria || "").trim().toUpperCase()
-  );
+  // Resumen: categorías (sin filtro)
+  const porCat = groupCount(state.activos, (a) => (a.categoria || "").trim().toUpperCase());
   makeBar(
     "chartCategorias",
     porCat.map(([k]) => k || "—"),
@@ -222,30 +245,53 @@ async function renderResumen() {
       data: {
         labels: ["Total parque", "Prestados", "Mov. Mes"],
         datasets: [
-          {
-            label: "Indicadores",
-            data: [
-              k.total_activos ?? 0,
-              k.prestados ?? 0,
-              k.movimientos_mes ?? 0,
-            ],
-          },
+          { label: "Indicadores", data: [k.total_activos ?? 0, k.prestados ?? 0, k.movimientos_mes ?? 0] },
         ],
       },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: false } },
-      },
+      options: { responsive: true, plugins: { legend: { display: false } } },
     });
   }
 }
 
-async function renderMarcasFiltrado() {
-  if (!state.activos.length) {
-    await loadData();
-  }
+// =======================
+// Vista: Estados (filtrado por categoría)
+// =======================
+function getEstadoCategoriaSeleccionada() {
+  const checked = ensureDefaultRadioChecked("estadoCat", "NOTEBOOK");
+  return (checked?.value || "NOTEBOOK").toUpperCase();
+}
 
-  const cat = getEstadoCategoriaSeleccionada(); // NOTEBOOK | CELULAR
+function renderEstadosFiltrado() {
+  const cat = getEstadoCategoriaSeleccionada();
+
+  const activosFiltrados = state.activos.filter((a) => {
+    const c = String(a.categoria || "").trim().toUpperCase();
+    return c === cat;
+  });
+
+  const porEstado = groupCount(activosFiltrados, (a) =>
+    String(a.estado || "").trim().toUpperCase()
+  );
+
+  makeDoughnut(
+    "chartEstados",
+    porEstado.map(([k]) => k || "—"),
+    porEstado.map(([, v]) => v)
+  );
+}
+
+// =======================
+// Vista: Marcas (filtrado por categoría)
+// =======================
+function getMarcaCategoriaSeleccionada() {
+  const checked = ensureDefaultRadioChecked("marcaCat", "NOTEBOOK");
+  return (checked?.value || "NOTEBOOK").toUpperCase();
+}
+
+async function renderMarcasFiltrado() {
+  if (!state.activos.length) await loadData();
+
+  const cat = getMarcaCategoriaSeleccionada();
 
   const activosFiltrados = state.activos.filter((a) => {
     const c = String(a.categoria || "").trim().toUpperCase();
@@ -253,7 +299,7 @@ async function renderMarcasFiltrado() {
   });
 
   const porMarca = groupCount(activosFiltrados, (a) =>
-    (a.marca || "").trim().toUpperCase()
+    String(a.marca || "").trim().toUpperCase()
   );
 
   const topMarca = porMarca.slice(0, 10);
@@ -266,28 +312,34 @@ async function renderMarcasFiltrado() {
   );
 }
 
-
-function getEstadoCategoriaSeleccionada() {
-  const el = document.querySelector('input[name="estadoCat"]:checked');
-  return (el?.value || "NOTEBOOK").toUpperCase();
+// =======================
+// Vista: Categorías (filtro por estado)
+// =======================
+function getEstadoCategoriaFiltroSeleccionado() {
+  const sel = document.getElementById("filterEstadoCategorias");
+  return (sel?.value || "ALL").toUpperCase();
 }
 
-function renderEstadosFiltrado() {
-  const cat = getEstadoCategoriaSeleccionada();
+async function renderCategoriasFiltrado() {
+  if (!state.activos.length) await loadData();
 
-  const activosFiltrados = state.activos.filter(a => {
-    const c = String(a.categoria || "").trim().toUpperCase();
-    return c === cat;
+  const estado = getEstadoCategoriaFiltroSeleccionado(); // ALL | ASIGNADO | ...
+
+  const activosFiltrados = state.activos.filter((a) => {
+    if (estado === "ALL") return true;
+    const e = String(a.estado || "").trim().toUpperCase();
+    return e === estado;
   });
 
-  const porEstado = groupCount(activosFiltrados, (a) =>
-    String(a.estado || "").toUpperCase()
+  const porCat = groupCount(activosFiltrados, (a) =>
+    String(a.categoria || "").trim().toUpperCase()
   );
 
-  makeDoughnut(
-    "chartEstados",
-    porEstado.map(([k]) => k || "—"),
-    porEstado.map(([, v]) => v)
+  makeBar(
+    "chartCategorias",
+    porCat.map(([k]) => k || "—"),
+    porCat.map(([, v]) => v),
+    estado === "ALL" ? "Activos" : `Activos (${estado})`
   );
 }
 
@@ -297,7 +349,6 @@ function renderEstadosFiltrado() {
 let chartColabInstance = null;
 
 async function renderPorColaborador() {
-  // 1) cargar datos (importante: por length)
   if (!state.byCollaborator.length) {
     try {
       const data = await api("/api/reports/assets-by-collaborator");
@@ -308,33 +359,27 @@ async function renderPorColaborador() {
     }
   }
 
-  // 2) leer filtros UI
   const minSelect = document.getElementById("filterMinActivos");
   const catSelect = document.getElementById("filterCategoriaColab");
 
-  const minVal = minSelect ? String(minSelect.value) : "ALL"; // ALL | 0 | 1 | 2 | 3
-  const categoria = catSelect ? catSelect.value : "ALL"; // ALL | NOTEBOOK | CELULAR
+  const minVal = minSelect ? String(minSelect.value) : "ALL";
+  const categoria = catSelect ? catSelect.value : "ALL";
 
-  // 3) elegir métrica del filtro según categoría
   const getMetric = (r) => {
     if (categoria === "NOTEBOOK") return Number(r.notebooks_asignados || 0);
     if (categoria === "CELULAR") return Number(r.celulares_asignados || 0);
-    return Number(r.activos_asignados || 0); // ALL
+    return Number(r.activos_asignados || 0);
   };
 
-  // 4) filtrar por mínimo usando la métrica correcta
   let rows = state.byCollaborator.filter((r) => {
     const value = getMetric(r);
-
     if (minVal === "ALL") return true;
     if (minVal === "3") return value >= 3;
     return value === Number(minVal);
   });
 
-  // (opcional) ordenar por métrica
   rows.sort((a, b) => getMetric(b) - getMetric(a));
 
-  // 5) datasets
   const labels = rows.map((r) => r.colaborador || "Sin colaborador");
   const nb = rows.map((r) => Number(r.notebooks_asignados || 0));
   const cel = rows.map((r) => Number(r.celulares_asignados || 0));
@@ -361,7 +406,6 @@ async function renderPorColaborador() {
     thCel?.classList.remove("d-none");
   }
 
-  // 6) gráfico
   const ctx = document.getElementById("chartColaboradores");
   if (ctx) {
     if (chartColabInstance) chartColabInstance.destroy();
@@ -373,25 +417,19 @@ async function renderPorColaborador() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { position: "bottom" } },
-        scales: {
-          x: { stacked: true },
-          y: { beginAtZero: true, stacked: true },
-        },
+        scales: { x: { stacked: true }, y: { beginAtZero: true, stacked: true } },
       },
     });
   }
 
-  // 7) tabla (con hover para detalle)
   const tbody = document.getElementById("tbodyColaboradores");
   if (!tbody) return;
-
   tbody.innerHTML = "";
 
   rows.forEach((r, idx) => {
     const notebooks = Number(r.notebooks_asignados || 0);
     const celulares = Number(r.celulares_asignados || 0);
     const totalAsignados = Number(r.activos_asignados || 0);
-
     const colabName = r.colaborador || "Sin colaborador";
 
     const cellHover = (qty, cat) => {
@@ -407,7 +445,6 @@ async function renderPorColaborador() {
     };
 
     let cols = "";
-
     if (categoria === "ALL") {
       cols = `
         <td class="text-center">${cellHover(notebooks, "NOTEBOOK")}</td>
@@ -443,8 +480,8 @@ async function renderPorProyecto() {
       state.byProject = [];
     }
   }
-  const rows = state.byProject;
 
+  const rows = state.byProject;
   const labels = rows.map((r) => r.proyecto || "Sin proyecto");
   const totales = rows.map((r) => r.total || 0);
   const asignados = rows.map((r) => r.activos_asignados || 0);
@@ -467,10 +504,7 @@ async function renderPorProyecto() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { position: "bottom" } },
-        scales: {
-          x: { stacked: false },
-          y: { beginAtZero: true },
-        },
+        scales: { x: { stacked: false }, y: { beginAtZero: true } },
       },
     });
   }
@@ -526,10 +560,7 @@ async function renderPerifericos() {
         responsive: true,
         maintainAspectRatio: false,
         plugins: { legend: { position: "bottom" } },
-        scales: {
-          x: { stacked: false },
-          y: { beginAtZero: true },
-        },
+        scales: { x: { stacked: false }, y: { beginAtZero: true } },
       },
     });
   }
@@ -579,13 +610,31 @@ function showView(key) {
   });
 
   if (key === "resumen") renderResumen();
-  if (key === "estados") renderEstadosFiltrado();
-  if (key === "marcas") renderMarcasFiltrado();   // 👈 NUEVO
+
+  if (key === "estados") {
+    requestAnimationFrame(() => {
+      syncRadioButtons("estadoCat");
+      renderEstadosFiltrado();
+    });
+  }
+
+  if (key === "marcas") {
+    requestAnimationFrame(() => {
+      syncRadioButtons("marcaCat");
+      renderMarcasFiltrado();
+    });
+  }
+
+  if (key === "categorias") {
+    requestAnimationFrame(() => {
+      renderCategoriasFiltrado();
+    });
+  }
+
   if (key === "por-colaborador") renderPorColaborador();
   if (key === "por-proyecto") renderPorProyecto();
   if (key === "perifericos") renderPerifericos();
 }
-
 
 const nav = safeGet("reportNav");
 if (nav) {
@@ -663,15 +712,9 @@ function buildOptions(select, values) {
 }
 
 function populateFilters() {
-  const est = uniqSorted(
-    state.activos.map((a) => (a.estado || "").toUpperCase())
-  );
-  const cat = uniqSorted(
-    state.activos.map((a) => (a.categoria || "").toUpperCase())
-  );
-  const mar = uniqSorted(
-    state.activos.map((a) => (a.marca || "").toUpperCase())
-  );
+  const est = uniqSorted(state.activos.map((a) => (a.estado || "").toUpperCase()));
+  const cat = uniqSorted(state.activos.map((a) => (a.categoria || "").toUpperCase()));
+  const mar = uniqSorted(state.activos.map((a) => (a.marca || "").toUpperCase()));
   buildOptions(ui.estado, est);
   buildOptions(ui.categoria, cat);
   buildOptions(ui.marca, mar);
@@ -709,10 +752,10 @@ function toggleTipoUI() {
   if (!ui.tipo) return;
   const tipo = ui.tipo.value;
   const isMov = tipo === "movimientos";
-  if (ui.boxDesde) ui.boxDesde.classList.toggle("d-none", !isMov);
-  if (ui.boxHasta) ui.boxHasta.classList.toggle("d-none", !isMov);
-  if (ui.colsActivos) ui.colsActivos.classList.toggle("d-none", isMov);
-  if (ui.colsMov) ui.colsMov.classList.toggle("d-none", !isMov);
+  ui.boxDesde?.classList.toggle("d-none", !isMov);
+  ui.boxHasta?.classList.toggle("d-none", !isMov);
+  ui.colsActivos?.classList.toggle("d-none", isMov);
+  ui.colsMov?.classList.toggle("d-none", !isMov);
 }
 
 function sanitizeForCSV(value) {
@@ -726,9 +769,7 @@ function sanitizeForCSV(value) {
 }
 
 function toCSV(rows, delimiter = ",") {
-  return rows
-    .map((r) => r.map((v) => sanitizeForCSV(v)).join(delimiter))
-    .join("\r\n");
+  return rows.map((r) => r.map((v) => sanitizeForCSV(v)).join(delimiter)).join("\r\n");
 }
 
 function downloadCSV(filename, csv) {
@@ -786,9 +827,7 @@ function applyFiltersMovimientos() {
 function buildRows(data, cols) {
   const header = cols.map(([, label]) => label);
   const rows = [header];
-  data.forEach((it) => {
-    rows.push(cols.map(([key]) => it[key]));
-  });
+  data.forEach((it) => rows.push(cols.map(([key]) => it[key])));
   return rows;
 }
 
@@ -840,30 +879,49 @@ function exportar() {
   checkboxGroup(ui.colsMov, COLS_MOVIMIENTOS, "m");
   toggleTipoUI();
 
-  if (ui.tipo) ui.tipo.addEventListener("change", toggleTipoUI);
-  if (ui.btnExport) ui.btnExport.addEventListener("click", exportar);
+  ui.tipo?.addEventListener("change", toggleTipoUI);
+  ui.btnExport?.addEventListener("click", exportar);
+
+  // Defaults para que al entrar a vistas ya estén “pintados”
+  syncRadioButtons("estadoCat");
+  syncRadioButtons("marcaCat");
 
   showView("resumen");
 })();
 
-document
-  .getElementById("filterMinActivos")
-  ?.addEventListener("change", renderPorColaborador);
+document.getElementById("filterMinActivos")?.addEventListener("change", renderPorColaborador);
+document.getElementById("filterCategoriaColab")?.addEventListener("change", renderPorColaborador);
 
-document
-  .getElementById("filterCategoriaColab")
-  ?.addEventListener("change", renderPorColaborador);
+// Cambios de radios (Estados)
+document.addEventListener("change", (e) => {
+  if (e.target && e.target.name === "estadoCat") {
+    syncRadioButtons("estadoCat");
+    renderEstadosFiltrado();
+  }
+});
+
+// Cambios de radios (Marcas)
+document.addEventListener("change", (e) => {
+  if (e.target && e.target.name === "marcaCat") {
+    syncRadioButtons("marcaCat");
+    renderMarcasFiltrado();
+  }
+});
+
+// Categorías (filtro por estado)
+document.getElementById("filterEstadoCategorias")?.addEventListener("change", () => {
+  renderCategoriasFiltrado();
+});
 
 // ==============================
 // POPOVER DETALLE EN HOVER (Activos por colaborador)
-// Requiere: .hover-assets + data-colaborador + data-categoria
 // ==============================
 if (!window.__reportesHoverPopoversBound) {
   window.__reportesHoverPopoversBound = true;
 
-  const popoverMap = new WeakMap(); // elemento -> instancia popover
-  const htmlCache = new Map();      // "colaborador|categoria" -> html
-  const hideTimers = new WeakMap(); // elemento -> timeoutId
+  const popoverMap = new WeakMap();
+  const htmlCache = new Map();
+  const hideTimers = new WeakMap();
 
   const esc = (s) =>
     String(s ?? "")
@@ -874,21 +932,13 @@ if (!window.__reportesHoverPopoversBound) {
       .replaceAll("'", "&#039;");
 
   const buildHtml = (items) => {
-    if (!items?.length) {
-      return `<div class="text-muted small">Sin activos asignados.</div>`;
-    }
-
+    if (!items?.length) return `<div class="text-muted small">Sin activos asignados.</div>`;
     const lis = items
       .map((a) => {
         const marca = a.marca ? esc(a.marca) : "(Sin marca)";
-        const modelo = a.modelo
-          ? esc(a.modelo)
-          : a.nombre
-          ? esc(a.nombre)
-          : "(Sin modelo)";
+        const modelo = a.modelo ? esc(a.modelo) : a.nombre ? esc(a.nombre) : "(Sin modelo)";
         const serie = a.serial_imei ? esc(a.serial_imei) : "(Sin serie/IMEI)";
         const cat = a.categoria ? esc(a.categoria) : "";
-
         return `
           <li class="mb-2">
             <div class="fw-semibold">${marca} • ${modelo}</div>
@@ -897,7 +947,6 @@ if (!window.__reportesHoverPopoversBound) {
         `;
       })
       .join("");
-
     return `<ul class="mb-0 ps-3">${lis}</ul>`;
   };
 
@@ -938,7 +987,6 @@ if (!window.__reportesHoverPopoversBound) {
 
     const key = `${colaborador}|${categoria}`;
 
-    // crea (loading) si no existe
     if (!getPopover(el)) {
       const inst = new bootstrap.Popover(el, {
         trigger: "manual",
@@ -956,7 +1004,6 @@ if (!window.__reportesHoverPopoversBound) {
 
     try { getPopover(el).show(); } catch {}
 
-    // cache
     if (htmlCache.has(key)) {
       const cached = htmlCache.get(key);
       disposePopover(el);
@@ -977,7 +1024,6 @@ if (!window.__reportesHoverPopoversBound) {
       return;
     }
 
-    // fetch
     try {
       const qs = new URLSearchParams({ colaborador, categoria }).toString();
       const data = await api(`/api/reports/assets-by-collaborator/details?${qs}`);
@@ -1010,7 +1056,6 @@ if (!window.__reportesHoverPopoversBound) {
     }
   }
 
-  // hover ON
   document.addEventListener("mouseover", (e) => {
     const el = e.target.closest(".hover-assets");
     if (!el) return;
@@ -1024,7 +1069,6 @@ if (!window.__reportesHoverPopoversBound) {
     ensureAndShow(el);
   });
 
-  // hover OFF
   document.addEventListener("mouseout", (e) => {
     const el = e.target.closest(".hover-assets");
     if (!el) return;
@@ -1032,36 +1076,20 @@ if (!window.__reportesHoverPopoversBound) {
     scheduleHide(el, 160);
   });
 
-  // click fuera
   document.addEventListener("click", (e) => {
     if (e.target.closest(".popover")) return;
     if (e.target.closest(".hover-assets")) return;
     document.querySelectorAll(".hover-assets").forEach((x) => scheduleHide(x, 0));
   });
 
-  // scroll
   document.addEventListener(
     "scroll",
-    () => {
-      document
-        .querySelectorAll(".hover-assets")
-        .forEach((x) => scheduleHide(x, 0));
-    },
+    () => document.querySelectorAll(".hover-assets").forEach((x) => scheduleHide(x, 0)),
     true
   );
 
-  // ESC
   document.addEventListener("keydown", (e) => {
     if (e.key !== "Escape") return;
     document.querySelectorAll(".hover-assets").forEach((x) => scheduleHide(x, 0));
   });
-
-  
 }
-
-document.addEventListener("change", (e) => {
-    if (e.target && e.target.name === "estadoCat") {
-      renderEstadosFiltrado();
-      renderMarcasFiltrado();
-    }
-  });
