@@ -240,6 +240,30 @@ async function renderResumen() {
   }
 }
 
+function getEstadoCategoriaSeleccionada() {
+  const el = document.querySelector('input[name="estadoCat"]:checked');
+  return (el?.value || "NOTEBOOK").toUpperCase();
+}
+
+function renderEstadosFiltrado() {
+  const cat = getEstadoCategoriaSeleccionada();
+
+  const activosFiltrados = state.activos.filter(a => {
+    const c = String(a.categoria || "").trim().toUpperCase();
+    return c === cat;
+  });
+
+  const porEstado = groupCount(activosFiltrados, (a) =>
+    String(a.estado || "").toUpperCase()
+  );
+
+  makeDoughnut(
+    "chartEstados",
+    porEstado.map(([k]) => k || "—"),
+    porEstado.map(([, v]) => v)
+  );
+}
+
 // =======================
 // Reporte: Activos por colaborador
 // =======================
@@ -528,6 +552,7 @@ function showView(key) {
   });
 
   if (key === "resumen") renderResumen();
+  if (key === "estados") renderEstadosFiltrado();
   if (key === "por-colaborador") renderPorColaborador();
   if (key === "por-proyecto") renderPorProyecto();
   if (key === "perifericos") renderPerifericos();
@@ -1001,4 +1026,12 @@ if (!window.__reportesHoverPopoversBound) {
     if (e.key !== "Escape") return;
     document.querySelectorAll(".hover-assets").forEach((x) => scheduleHide(x, 0));
   });
+
+  
 }
+
+document.addEventListener("change", (e) => {
+    if (e.target && e.target.name === "estadoCat") {
+      renderEstadosFiltrado();
+    }
+  });
