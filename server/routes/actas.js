@@ -9,25 +9,63 @@ import { exec } from "child_process";
 import { verifyAuth, requireRole } from "../middleware/auth.js";
 import { pool } from "../db.js";
 
-
-
 const router = Router();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-
 function formatearFechaDDMMYYYY(fechaISO) {
-    if (!fechaISO) return "";
-    const [anio, mes, dia] = fechaISO.split("-");
-    if (!anio || !mes || !dia) return fechaISO;
-    return `${dia}-${mes}-${anio}`;
+  if (!fechaISO) return "";
+  const [anio, mes, dia] = fechaISO.split("-");
+  if (!anio || !mes || !dia) return fechaISO;
+  return `${dia}-${mes}-${anio}`;
 }
 
+function formatearFechaDDMMYYYY_sinGuiones(fechaISO) {
+  if (!fechaISO) return "";
+  const [anio, mes, dia] = fechaISO.split("-");
+  if (!anio || !mes || !dia) return "";
+  return `${dia}${mes}${anio}`; // DDMMYYYY
+}
+
+function rutSinDV(rut) {
+  if (!rut) return "";
+
+  const limpio = rut
+    .toString()
+    .toUpperCase()
+    .replace(/\./g, "")
+    .replace(/\s/g, "");
+  // Si viene con guion: 12.345.678-9 / 12345678-K
+  if (limpio.includes("-")) {
+    const [num] = limpio.split("-");
+    return (num || "").replace(/\D/g, "");
+  }
+
+  // Si viene sin guion: 123456789 o 12345678K -> quitar último caracter (DV)
+  const solo = limpio.replace(/[^0-9K]/g, "");
+  if (solo.length <= 1) return "";
+  return solo.slice(0, -1).replace(/\D/g, "");
+}
+
+function generarNombreUnico(outputDir, base) {
+  // base: ej "15770961_22122025"
+  let candidato = base;
+  let i = 0;
+
+  while (
+    fs.existsSync(path.join(outputDir, `${candidato}.pdf`)) ||
+    fs.existsSync(path.join(outputDir, `${candidato}.docx`))
+  ) {
+    i += 1;
+    candidato = `${base}(${i})`;
+  }
+
+  return candidato;
+}
 
 // Archivo base...
 const TEMPLATE_NAME = "ACTA_ENTREGA_TEMPLATE.docx";
-
 
 // Carpeta donde se guardarán los PDFs generados
 const PDF_OUTPUT_DIR = path.join(__dirname, "..", "storage", "actas_pdf");
@@ -107,6 +145,15 @@ router.post("/entrega", verifyAuth, async (req, res) => {
     });
 
     // Datos que se inyectarán en la plantilla
+    const observacionEntregaRaw = (extras?.observaciones_generales ?? "")
+      .toString()
+      .trim();
+    const tipoProducto = (extras?.tipo_producto || "NUEVO")
+      .toString()
+      .trim()
+      .toUpperCase();
+    const estadoDefault = tipoProducto === "REACONDICIONADO" ? "REAC" : "NUEVO";
+
     const data = {
       nombre_trabajador: colaborador.nombre,
       fecha: formatearFechaDDMMYYYY(extras?.fecha),
@@ -117,13 +164,12 @@ router.post("/entrega", verifyAuth, async (req, res) => {
       descripcion_entrega:
         extras?.descripcion_entrega ||
         "Entrega de equipamiento tecnológico para el desarrollo de sus funciones laborales.",
+      observacion_entrega: observacionEntregaRaw || "Ninguna",
       equipos: (equipos || []).map((e) => ({
         equipo:
-          `${e.marca || ""} ${e.modelo || ""}`.trim() ||
-          e.nombre ||
-          "Equipo",
+          `${e.marca || ""} ${e.modelo || ""}`.trim() || e.nombre || "Equipo",
         telefono: e.telefono || "",
-        estado_equipo: e.estado_equipo || "NUEVO",
+        estado_equipo: e.estado_entrega || e.estado_equipo || "NUEVO",
         serie: e.serial_imei || "",
         fecha_entrega: formatearFechaDDMMYYYY(extras?.fecha),
       })),
@@ -141,7 +187,17 @@ router.post("/entrega", verifyAuth, async (req, res) => {
     });
 
     // Guardar DOCX temporal en la carpeta de PDFs
-    const baseName = `ACTA_${colaborador.id}_${Date.now()}`;
+    const rutBase = rutSinDV(colaborador.rut);
+    const fechaBase =
+      formatearFechaDDMMYYYY_sinGuiones(extras?.fecha) ||
+      formatearFechaDDMMYYYY_sinGuiones(new Date().toISOString().slice(0, 10));
+
+    // Si por algún motivo no viene rut/fecha, caemos a algo seguro:
+    const base = `${rutBase || colaborador.id}_${fechaBase || Date.now()}`;
+
+    // ✅ Genera nombre único si ya existe
+    const baseName = generarNombreUnico(PDF_OUTPUT_DIR, base);
+
     const tmpDocxPath = path.join(PDF_OUTPUT_DIR, `${baseName}.docx`);
     fs.writeFileSync(tmpDocxPath, buf);
     console.log("💾 DOCX temporal guardado en:", tmpDocxPath);
@@ -168,10 +224,7 @@ router.post("/entrega", verifyAuth, async (req, res) => {
     }
 
     // Guardar registro de la acta en BD
-    const relativePdfPath = path.relative(
-      path.join(__dirname, ".."),
-      pdfPath
-    ); // ej: "storage/actas_pdf/ACTA_1_1732812333.pdf"
+    const relativePdfPath = path.relative(path.join(__dirname, ".."), pdfPath); // ej: "storage/actas_pdf/ACTA_1_1732812333.pdf"
 
     const fechaActa = extras?.fecha || new Date().toISOString().slice(0, 10);
 
@@ -250,14 +303,17 @@ router.get("/:id/pdf", verifyAuth, async (req, res) => {
   }
 });
 
-
 // ========================================================
 //  HISTORIAL DE ACTAS DE ENTREGA
 //  GET /api/actas/historial
 // ========================================================
-router.get('/historial', verifyAuth, requireRole('ADMIN', 'REPORT'), async (_req, res) => {
-  try {
-    const [rows] = await pool.query(`
+router.get(
+  "/historial",
+  verifyAuth,
+  requireRole("ADMIN", "REPORT"),
+  async (_req, res) => {
+    try {
+      const [rows] = await pool.query(`
       SELECT
         a.id,
         a.colaborador_id,
@@ -273,12 +329,12 @@ router.get('/historial', verifyAuth, requireRole('ADMIN', 'REPORT'), async (_req
       ORDER BY a.creado_en DESC, a.id DESC
     `);
 
-    res.json(rows);
-  } catch (err) {
-    console.error('Error al obtener historial de actas:', err);
-    res.status(500).json({ error: 'Error al obtener historial de actas' });
+      res.json(rows);
+    } catch (err) {
+      console.error("Error al obtener historial de actas:", err);
+      res.status(500).json({ error: "Error al obtener historial de actas" });
+    }
   }
-});
-
+);
 
 export default router;

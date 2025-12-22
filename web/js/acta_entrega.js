@@ -7,8 +7,14 @@ let activosListado = [];
 let activosSeleccionados = new Set();
 
 
-const loadingOverlay = $('#loadingOverlay');
-const loadingMessage = $('#loadingMessage');
+const loadingOverlay = null;
+const loadingMessage = null;
+
+window.addEventListener('DOMContentLoaded', () => {
+  loadingOverlay = $('#loadingOverlay');
+  loadingMessage = $('#loadingMessage');
+});
+
 
 function showLoading (message) {
   if (!loadingOverlay) return;
@@ -298,6 +304,7 @@ $('#btnBuscarPorColaborador').addEventListener('click', (e) => {
 
 function renderActivos(items) {
   const tbody = $('#tbodyActivos');
+
   if (!items.length) {
     tbody.innerHTML = `
       <tr>
@@ -312,12 +319,17 @@ function renderActivos(items) {
   tbody.innerHTML = items.map(a => {
     const checked = activosSeleccionados.has(a.id) ? 'checked' : '';
     const equipo = `${(a.categoria || '').toUpperCase()} ${a.marca || ''} ${a.modelo || ''}`.trim();
+
     const hostnameLinea = a.hostname
       ? `<div class="small text-info">Hostname: ${a.hostname}</div>`
       : '';
+
     const nombreEquipoLinea = a.nombre_equipo
       ? `<div class="small text-muted">${a.nombre_equipo}</div>`
       : '';
+
+    // ✅ Estado por equipo (si no existe, NUEVO)
+    const estado = (a.estado_entrega || '').toUpperCase();
 
     return `
       <tr>
@@ -327,6 +339,13 @@ function renderActivos(items) {
         <td>${a.id}</td>
         <td>
           <div>${equipo || 'Equipo'}</div>
+
+          <select class="form-select form-select-sm mt-1 selEstadoEntrega" data-id="${a.id}">
+            <option value="" disabled ${!estado ? 'selected' : ''}>-- Estado de entrega --</option>
+            <option value="NUEVO" ${estado === 'NUEVO' ? 'selected' : ''}>NUEVO</option>
+            <option value="USADO" ${estado === 'USADO' ? 'selected' : ''}>USADO</option>
+          </select>
+
           ${hostnameLinea}
           ${nombreEquipoLinea}
         </td>
@@ -336,15 +355,29 @@ function renderActivos(items) {
     `;
   }).join('');
 
+  // ✅ Eventos checkbox (igual que antes)
   tbody.querySelectorAll('.chkActivo').forEach(chk => {
     chk.addEventListener('change', () => {
       const id = parseInt(chk.dataset.id, 10);
       if (chk.checked) activosSeleccionados.add(id);
       else activosSeleccionados.delete(id);
+
       actualizarResumenSeleccion();
     });
   });
+
+  // ✅ Evento selector estado: se guarda en el objeto del activo
+  tbody.querySelectorAll('.selEstadoEntrega').forEach(sel => {
+    sel.addEventListener('change', () => {
+      const id = parseInt(sel.dataset.id, 10);
+      const activo = activosListado.find(x => x.id === id);
+      if (activo) {
+        activo.estado_entrega = sel.value; // "NUEVO" o "USADO"
+      }
+    });
+  });
 }
+
 
 // Seleccionar / deseleccionar todos
 $('#chkTodosActivos').addEventListener('change', (e) => {
@@ -375,18 +408,14 @@ $('#btnGenerarActa').addEventListener('click', async (e) => {
     return;
   }
 
-  const activos = activosListado.filter((a) => activosSeleccionados.has(a.id));
-  if (!activos.length) {
-    showToast('Selecciona al menos un activo para el acta.', 'warning');
-    return;
-  }
+  const activos = activosListado.filter(a => activosSeleccionados.has(a.id)).map(a => ({...a, estado_entrega: a.estado_entrega || 'NUEVO'}));
 
   const extras = {
     fecha: $('#acta_fecha').value,
     centro_costo: $('#acta_centro_costo').value.trim(),
-    descripcion_entrega: $('#acta_descripcion_entrega').value.trim(),
+    descripcion_entrega: $('#descripcion_entrega').value.trim(),
     observaciones_generales: $('#acta_observaciones_generales').value.trim(),
-    representante_empresa: $('#acta_representante_empresa').value.trim(),
+    representante_empresa: $('#acta_representante_empresa').value.trim()
   };
 
   if (!extras.fecha) {
