@@ -65,7 +65,7 @@ const colabHistorialWrapper = $('#colabHistorialWrapper');
 const colabResumen = $('#colabResumen');
 const tbodyColabActivosActuales = $('#tbodyColabActivosActuales');
 const tbodyColabMovimientos = $('#tbodyColabMovimientos');
-
+const hiddenColaboradorId = $('#colaborador_id_hidden');5
 
 // historial de cambios técnicos
 const tbodyHistorialCambios = $('#tbodyHistorialCambios');
@@ -75,6 +75,8 @@ let historialCambiosCache = [];
 
 let historialCache = [];        // historial general
 let historialActivoCache = [];  // historial de un activo
+
+
 
 // --- helpers ---
 function setBusy(btn, busy) {
@@ -198,15 +200,37 @@ btnGuardarMov.addEventListener('click', async () => {
   // aseguramos id real (viene del hidden)
   body.activo_id = hiddenActivoId.value;
 
+  // ✅ asegurar colaborador_id desde hidden (aunque el FormData no lo tome por algún motivo)
+  // (si no existe el hidden, no rompe)
+  if (typeof hiddenColaboradorId !== 'undefined' && hiddenColaboradorId) {
+    body.colaborador_id = hiddenColaboradorId.value || body.colaborador_id || '';
+  }
+
   if (!body.activo_id) {
     msgMov.textContent = 'Debes seleccionar un activo primero.';
     showToast('Selecciona un activo', 'danger');
     return;
   }
+
   if (!body.tipo) {
     msgMov.textContent = 'Debes elegir tipo de movimiento.';
     showToast('Selecciona tipo de movimiento', 'danger');
     return;
+  }
+
+  // ✅ Validación crítica: en SALIDA debes seleccionar colaborador desde autocompletado
+  if (body.tipo === 'SALIDA') {
+    if (!body.asignado_a || !body.asignado_a.trim()) {
+      msgMov.textContent = 'Debes seleccionar un colaborador.';
+      showToast(msgMov.textContent, 'warning');
+      return;
+    }
+
+    if (!body.colaborador_id) {
+      msgMov.textContent = 'Selecciona el colaborador desde la lista (autocompletado).';
+      showToast(msgMov.textContent, 'warning');
+      return;
+    }
   }
 
   setBusy(btnGuardarMov, true);
@@ -226,6 +250,12 @@ btnGuardarMov.addEventListener('click', async () => {
     hiddenActivoSerial.value = '';
     txtActivoSel.value = '';
     btnHistorialActivo.disabled = true;
+
+    // ✅ limpiar también el hidden del colaborador (para no dejar un id pegado)
+    if (typeof hiddenColaboradorId !== 'undefined' && hiddenColaboradorId) {
+      hiddenColaboradorId.value = '';
+    }
+
     applyTipoVisibility(cmbTipo.value);
 
   } catch (err) {
@@ -236,6 +266,7 @@ btnGuardarMov.addEventListener('click', async () => {
     setBusy(btnGuardarMov, false);
   }
 });
+
 
 // --- HISTORIAL GENERAL (modal grande) ---
 async function cargarHistorialGeneral() {
@@ -596,6 +627,10 @@ async function autocompletarColaboradores(term) {
       btn.addEventListener('click', () => {
         inputAsignadoA.value = c.nombre;
 
+        if (hiddenColaboradorId) {
+          hiddenColaboradorId.value = c.id;
+        } 
+
         if (inputParqueProyecto) {
           inputParqueProyecto.value = c.proyecto_nombre || '';
         }
@@ -625,6 +660,9 @@ async function autocompletarColaboradores(term) {
 // Escuchar mientras el usuario escribe
 inputAsignadoA.addEventListener('input', () => {
   const term = inputAsignadoA.value.trim();
+
+  if (hiddenColaboradorId) hiddenColaboradorId.value = '';
+
   clearTimeout(colabTimer);
   colabTimer = setTimeout(() => autocompletarColaboradores(term), 250);
 });

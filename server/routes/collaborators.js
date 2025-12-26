@@ -146,7 +146,7 @@ router.get("/projects", verifyAuth, async (req, res) => {
       FROM proyectos p
       LEFT JOIN colaboradores c
         ON c.proyecto_id = p.id
-       AND c.activo = 1
+        AND c.activo = 1
       GROUP BY p.id, p.nombre, p.ciudad, p.region
       ORDER BY p.nombre ASC
     `);
@@ -172,7 +172,7 @@ router.get("/encargados", verifyAuth, async (req, res) => {
       FROM colaboradores e
       JOIN colaboradores c
         ON c.encargado_id = e.id
-       AND c.activo = 1
+        AND c.activo = 1
       GROUP BY e.id, e.nombre
       ORDER BY e.nombre ASC
     `);
@@ -430,41 +430,53 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
         a.fecha_baja
       FROM activos a
       WHERE
+        a.estado = 'ASIGNADO'
+        AND (
         a.colaborador_id = ?
         OR (a.colaborador_id IS NULL AND a.colaborador_actual = ?)
+        )
       ORDER BY a.id
       `,
       [id, colaborador.nombre]
     );
 
-    const [movimientos] = await pool.query(
-      `
-      SELECT
-        m.id,
-        m.fecha_hora,
-        m.tipo,
-        m.asignado_a,
-        m.ubicacion,
-        m.condicion_salida,
-        m.condicion_entrada,
-        m.notas,
-        m.parque_proyecto,
-        m.supervisor,
-        m.usuario_responsable,
-        m.usuario_login,
-        m.fecha_asignacion,
-        m.fecha_baja,
-        a.categoria,
-        a.marca,
-        a.modelo,
-        a.serial_imei
-      FROM movimientos m
-      JOIN activos a ON a.id = m.asset_id
-      WHERE m.colaborador_id = ?
-      ORDER BY m.fecha_hora DESC, m.id DESC
-      `,
-      [id]
-    );
+    let movimientos = [];
+try {
+  const [rowsMov] = await pool.query(
+    `
+    SELECT
+      m.id,
+      m.fecha_hora,
+      m.tipo,
+      m.asignado_a,
+      m.ubicacion,
+      m.condicion_salida,
+      m.condicion_entrada,
+      m.notas,
+      m.parque_proyecto,
+      m.supervisor,
+      m.usuario_responsable,
+      m.usuario_login,
+      m.fecha_asignacion,
+      m.fecha_baja,
+      a.categoria,
+      a.marca,
+      a.modelo,
+      a.serial_imei
+    FROM movimientos m
+    JOIN activos a ON a.id = m.asset_id
+    WHERE m.asignado_a = ?
+    ORDER BY m.fecha_hora DESC, m.id DESC
+    `,
+    [colaborador.nombre]
+  );
+
+  movimientos = rowsMov;
+} catch (err) {
+  console.error("[/api/collaborators/:id/history] movimientos query falló:", err);
+  // No cortamos el endpoint: el acta necesita activosActuales, no movimientos
+  movimientos = [];
+}
 
     res.json({
       ok: true,

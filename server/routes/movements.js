@@ -99,6 +99,7 @@ router.post('/', verifyAuth, async (req, res) => {
     compartido,
     fecha_asignacion,
     fecha_baja,
+    colaborador_id
   } = req.body;
 
   if (!activo_id || !tipo) {
@@ -151,6 +152,12 @@ router.post('/', verifyAuth, async (req, res) => {
       ]
     );
 
+    const colabId = Number.isFinite(Number(colaborador_id))
+      ? Number(colaborador_id)
+      : null;
+
+    
+
     // 2. Actualizar el estado del activo y dejar MOTIVO para el historial técnico
     if (tipo === 'SALIDA') {
       // MOTIVO en historial técnico: solo el comentario del usuario (notas)
@@ -168,6 +175,7 @@ router.post('/', verifyAuth, async (req, res) => {
       await conn.query(
         `UPDATE activos
         SET estado = 'ASIGNADO',
+            colaborador_id = ?,
             colaborador_actual = ?,
             usuario_login = ?,
             encargado = ?,
@@ -177,6 +185,7 @@ router.post('/', verifyAuth, async (req, res) => {
             ubicacion = ?
         WHERE id = ?`,
         [
+          colabId,
           asignado_a || null,
           usuario_login || null,
           supervisor || null,
@@ -202,6 +211,7 @@ router.post('/', verifyAuth, async (req, res) => {
       await conn.query(
         `UPDATE activos
         SET estado = 'DISPONIBLE',
+            colaborador_id = NULL,
             colaborador_actual = NULL,
             usuario_login = NULL,
             encargado = NULL,

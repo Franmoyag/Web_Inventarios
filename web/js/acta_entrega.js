@@ -7,8 +7,8 @@ let activosListado = [];
 let activosSeleccionados = new Set();
 
 
-const loadingOverlay = null;
-const loadingMessage = null;
+let loadingOverlay = null;
+let loadingMessage = null;
 
 window.addEventListener('DOMContentLoaded', () => {
   loadingOverlay = $('#loadingOverlay');
