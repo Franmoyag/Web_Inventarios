@@ -11,24 +11,43 @@ const router = Router();
 router.get('/', verifyAuth, async (req, res) => {
   const q = (req.query.q || '').trim();
 
-  // en tu tabla existe fecha_creacion, así que ordenamos por eso
-  let sql = `SELECT * FROM activos`;
-  const args = [];
+  // Traemos un resumen de asignaciones activas desde activo_asignaciones
+  // - asignaciones_activas: cuántos colaboradores lo tienen ahora
+  // - asignados_actuales: lista de nombres "A | B | C"
+  let sql = `
+    SELECT
+      a.*,
+      COALESCE(x.asignaciones_activas, 0) AS asignaciones_activas,
+      x.asignados_actuales
+    FROM activos a
+    LEFT JOIN (
+      SELECT
+        aa.asset_id,
+        COUNT(*) AS asignaciones_activas,
+        GROUP_CONCAT(c.nombre ORDER BY aa.fecha_asignacion DESC SEPARATOR ' | ') AS asignados_actuales
+      FROM activo_asignaciones aa
+      JOIN colaboradores c ON c.id = aa.colaborador_id
+      WHERE aa.estado = 'ASIGNADO'
+      GROUP BY aa.asset_id
+    ) x ON x.asset_id = a.id
+  `;
 
+  const args = [];
   if (q) {
     sql += `
       WHERE
-        marca LIKE ? OR
-        modelo LIKE ? OR
-        serial_imei LIKE ? OR
-        hostname LIKE ? OR
-        colaborador_actual LIKE ?
+        a.marca LIKE ? OR
+        a.modelo LIKE ? OR
+        a.serial_imei LIKE ? OR
+        a.hostname LIKE ? OR
+        a.colaborador_actual LIKE ? OR
+        x.asignados_actuales LIKE ?
     `;
     const like = `%${q}%`;
-    args.push(like, like, like, like, like);
+    args.push(like, like, like, like, like, like);
   }
 
-  sql += ` ORDER BY fecha_creacion DESC`;
+  sql += ` ORDER BY a.fecha_creacion DESC`;
 
   try {
     const [rows] = await pool.query(sql, args);

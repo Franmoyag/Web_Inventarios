@@ -156,51 +156,40 @@ function estadoBadge(estado) {
    FILA TABLA
 =============================== */
 function rowHTML(item) {
-  const cat = (item.categoria || "").toUpperCase();
-  const estadoText = (item.estado || "").toUpperCase();
-
-  let cls = "bg-secondary";
-  if (estadoText === "DISPONIBLE") cls = "bg-success";
-  else if (estadoText === "ASIGNADO") cls = "bg-info";
-  else if (estadoText === "REPARACION" || estadoText === "MANTENCION")
-    cls = "bg-warning text-dark";
-  else if (estadoText === "BAJA" || estadoText === "OBSOLETO")
-    cls = "bg-danger";
+  const asignados = item.asignados_actuales || item.colaborador_actual || '-';
 
   return `
     <tr class="hoverable-row" data-id="${item.id}">
-      <td class="text-secondary small">${item.id ?? ""}</td>
-      <td class="text-info fw-semibold">${cat}</td>
-      <td class="small">${item.serial_imei ?? ""}</td>
-      <td class="small">${item.hostname ?? ""}</td>
-
-      <td class="small text-center">
-        <button
-          type="button"
-          class="badge ${cls} border-0 px-3"
-          data-role="estado-activo"
-          data-id="${item.id}"
-          data-estado="${estadoText}"
-        >
-          ${estadoText}
-        </button>
+      <td class="text-secondary small">${item.id ?? ''}</td>
+      <td class="text-info fw-semibold">${item.categoria ?? ''}</td>
+      <td>
+        <div class="fw-semibold">${item.marca ?? ''} ${item.modelo ?? ''}</div>
+        <div class="text-secondary small">${item.nombre ?? ''}</div>
       </td>
-
-      <td class="small">${item.colaborador_actual ?? "-"}</td>
-
-      <!-- Nueva columna: botón Ver detalles -->
+      <td class="small">
+        ${item.serial_imei ?? ''}
+        ${item.iccid ? `<div class="text-secondary">SIM: ${item.iccid}</div>` : ''}
+        ${item.telefono ? `<div class="text-secondary">Tel: ${item.telefono}</div>` : ''}
+      </td>
+      <td class="small">${item.hostname ?? ''}</td>
+      <td class="small">${estadoBadge(item.estado)}</td>
+      <td class="small">
+        ${asignados}
+        ${item.usuario_login ? `<div class="text-secondary">${item.usuario_login}</div>` : ''}
+        ${item.parque_proyecto ? `<div class="text-secondary">${item.parque_proyecto}</div>` : ''}
+        ${item.encargado ? `<div class="text-secondary">${item.encargado}</div>` : ''}
+      </td>
+      <td class="small">${item.ubicacion ?? '-'}</td>
+      <td class="small text-secondary">${item.observaciones ?? ''}</td>
       <td class="text-end">
-        <button
-          type="button"
-          class="btn btn-sm btn-outline-light btn-ver-detalle"
-          data-id="${item.id}"
-        >
-          Ver detalles
+        <button class="btn btn-sm btn-outline-info btnEditar" data-id="${item.id}">
+          Editar
         </button>
       </td>
     </tr>
   `;
 }
+
 
 /* ===============================
    FILTROS

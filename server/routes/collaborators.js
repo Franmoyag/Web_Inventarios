@@ -184,6 +184,34 @@ router.get("/encargados", verifyAuth, async (req, res) => {
   }
 });
 
+// GET /api/collaborators/:id/assets
+router.get('/:id/assets', verifyAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const [rows] = await pool.query(
+      `
+      SELECT
+        a.*,
+        aa.fecha_asignacion AS fecha_asignacion_real,
+        aa.notas AS notas_asignacion
+      FROM activo_asignaciones aa
+      JOIN activos a ON a.id = aa.asset_id
+      WHERE aa.colaborador_id = ?
+        AND aa.estado = 'ASIGNADO'
+      ORDER BY aa.fecha_asignacion DESC
+      `,
+      [id]
+    );
+
+    res.json({ ok: true, items: rows });
+  } catch (err) {
+    console.error('Error activos actuales del colaborador:', err);
+    res.status(500).json({ error: 'Error al obtener activos del colaborador' });
+  }
+});
+
+
 /* Listas simples para selects */
 
 router.get("/cargos", verifyAuth, async (req, res) => {
@@ -297,6 +325,7 @@ router.get("/list", verifyAuth, async (req, res) => {
 /**
  * PUT /api/collaborators/:id/activo
  * Cambia el estado activo/inactivo con validación de equipos pendientes
+ * (Ahora valida con activo_asignaciones = fuente de verdad)
  */
 router.put("/:id/activo", verifyAuth, async (req, res) => {
   const id = parseInt(req.params.id, 10);
@@ -314,6 +343,7 @@ router.put("/:id/activo", verifyAuth, async (req, res) => {
   }
 
   try {
+    // Si lo quieren dejar INACTIVO, validar pendientes
     if (activo === 0) {
       const [colabRows] = await pool.query(
         "SELECT id, nombre FROM colaboradores WHERE id = ? LIMIT 1",
@@ -322,8 +352,8 @@ router.put("/:id/activo", verifyAuth, async (req, res) => {
       if (!colabRows.length) {
         return res.json({ ok: false, error: "Colaborador no encontrado." });
       }
-      const colab = colabRows[0];
 
+      // ✅ FUENTE DE VERDAD: activo_asignaciones (incluye compartidos)
       const [pending] = await pool.query(
         `
         SELECT
@@ -333,17 +363,16 @@ router.put("/:id/activo", verifyAuth, async (req, res) => {
           a.marca,
           a.modelo,
           a.serial_imei,
-          a.estado
-        FROM activos a
+          a.estado,
+          aa.fecha_asignacion
+        FROM activo_asignaciones aa
+        JOIN activos a ON a.id = aa.asset_id
         WHERE
-          a.estado = 'ASIGNADO'
-          AND (
-            a.colaborador_id = ?
-            OR (a.colaborador_id IS NULL AND a.colaborador_actual = ?)
-          )
+          aa.colaborador_id = ?
+          AND aa.estado = 'ASIGNADO'
         ORDER BY a.id
         `,
-        [id, colab.nombre]
+        [id]
       );
 
       if (pending.length > 0) {
@@ -380,25 +409,29 @@ router.put("/:id/activo", verifyAuth, async (req, res) => {
   }
 });
 
+
 /**
  * GET /api/collaborators/:id/history
  * Historial de movimientos + activos actuales del colaborador
  */
-router.get("/:id/history", verifyAuth, async (req, res) => {
-  const id = parseInt(req.params.id, 10);
-  if (!id) {
-    return res.status(400).json({ error: "ID inválido" });
-  }
-
+// GET /api/collaborators/:id/history
+router.get('/:id/history', verifyAuth, async (req, res) => {
   try {
-    const [colabRows] = await pool.query(
+    const { id } = req.params;
+
+    // 1) Datos del colaborador (ajusta campos si tu SELECT original trae más info)
+    const [[colaborador]] = await pool.query(
       `
-      SELECT 
-        c.*,
-        ca.nombre AS cargo_nombre,
-        p.nombre  AS proyecto_nombre
+      SELECT
+        c.id,
+        c.nombre,
+        c.rut,
+        c.activo,
+        c.genero,
+        car.nombre AS cargo_nombre,
+        p.nombre AS proyecto_nombre
       FROM colaboradores c
-      LEFT JOIN cargos ca   ON ca.id = c.cargo_id
+      LEFT JOIN cargos car ON car.id = c.cargo_id
       LEFT JOIN proyectos p ON p.id = c.proyecto_id
       WHERE c.id = ?
       LIMIT 1
@@ -406,12 +439,12 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
       [id]
     );
 
-    if (!colabRows.length) {
-      return res.status(404).json({ error: "Colaborador no encontrado" });
+    if (!colaborador) {
+      return res.status(404).json({ ok: false, error: 'Colaborador no encontrado' });
     }
 
-    const colaborador = colabRows[0];
-
+    // 2) Activos actuales (FUENTE DE VERDAD) -> activo_asignaciones
+    // Traemos también la fecha de asignación real (aa.fecha_asignacion)
     const [activosActuales] = await pool.query(
       `
       SELECT
@@ -422,75 +455,64 @@ router.get("/:id/history", verifyAuth, async (req, res) => {
         a.modelo,
         a.serial_imei,
         a.estado,
-        a.colaborador_id,
-        a.proyecto_id,
+        a.ubicacion,
         a.parque_proyecto,
         a.usuario_login,
-        a.fecha_asignacion,
-        a.fecha_baja
-      FROM activos a
-      WHERE
-        a.estado = 'ASIGNADO'
-        AND (
-        a.colaborador_id = ?
-        OR (a.colaborador_id IS NULL AND a.colaborador_actual = ?)
-        )
-      ORDER BY a.id
+        a.encargado,
+        aa.fecha_asignacion,
+        aa.fecha_devolucion AS fecha_baja,
+        aa.notas AS notas_asignacion
+      FROM activo_asignaciones aa
+      JOIN activos a ON a.id = aa.asset_id
+      WHERE aa.colaborador_id = ?
+        AND aa.estado = 'ASIGNADO'
+      ORDER BY aa.fecha_asignacion DESC
       `,
-      [id, colaborador.nombre]
+      [id]
     );
 
-    let movimientos = [];
-try {
-  const [rowsMov] = await pool.query(
-    `
-    SELECT
-      m.id,
-      m.fecha_hora,
-      m.tipo,
-      m.asignado_a,
-      m.ubicacion,
-      m.condicion_salida,
-      m.condicion_entrada,
-      m.notas,
-      m.parque_proyecto,
-      m.supervisor,
-      m.usuario_responsable,
-      m.usuario_login,
-      m.fecha_asignacion,
-      m.fecha_baja,
-      a.categoria,
-      a.marca,
-      a.modelo,
-      a.serial_imei
-    FROM movimientos m
-    JOIN activos a ON a.id = m.asset_id
-    WHERE m.asignado_a = ?
-    ORDER BY m.fecha_hora DESC, m.id DESC
-    `,
-    [colaborador.nombre]
-  );
+    // 3) Movimientos del colaborador (historial)
+    // OJO: mostramos fecha_hora como log, pero también traemos fecha_asignacion/fecha_baja reales si existen
+    const [movimientos] = await pool.query(
+      `
+      SELECT
+        m.id,
+        m.fecha_hora,
+        m.tipo,
+        m.asignado_a,
+        m.ubicacion,
+        m.parque_proyecto,
+        m.usuario_login,
+        m.supervisor,
+        m.compartido,
+        m.fecha_asignacion,
+        m.fecha_baja,
+        m.notas,
+        a.categoria,
+        a.marca,
+        a.modelo,
+        a.serial_imei
+      FROM movimientos m
+      JOIN activos a ON a.id = m.asset_id
+      WHERE m.colaborador_id = ?
+      ORDER BY m.fecha_hora DESC
+      LIMIT 300
+      `,
+      [id]
+    );
 
-  movimientos = rowsMov;
-} catch (err) {
-  console.error("[/api/collaborators/:id/history] movimientos query falló:", err);
-  // No cortamos el endpoint: el acta necesita activosActuales, no movimientos
-  movimientos = [];
-}
-
-    res.json({
+    return res.json({
       ok: true,
       colaborador,
       activosActuales,
-      movimientos,
+      movimientos
     });
   } catch (err) {
-    console.error("[/api/collaborators/:id/history] ERROR:", err);
-    res
-      .status(500)
-      .json({ error: "Error al obtener historial del colaborador" });
+    console.error('Error history colaborador:', err);
+    res.status(500).json({ ok: false, error: 'Error al obtener historial del colaborador' });
   }
 });
+
 
 /* ========== CREAR / OBTENER / ACTUALIZAR ========== */
 
